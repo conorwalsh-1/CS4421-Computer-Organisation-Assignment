@@ -1,0 +1,22 @@
+# Compiled Java
+*.class
+out/
+bin/
+build/
+target/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Extension output (results are regenerated each run)
+*.csv
+results/
