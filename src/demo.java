@@ -11,9 +11,44 @@ public class demo
 {
     public static void main(String[] args) throws Exception
     {
-        System.out.println("cores:  " + cpuInfo.getCount());
-        System.out.println("model:  " + cpuInfo.getModel());
-        System.out.println("core 0: busy=" + cpuInfo.getBusy(0) + " idle=" + cpuInfo.getIdle(0));
+        int cores = cpuInfo.getCount();
+        String model = cpuInfo.getModel();
+        if (model.equals("unknown")) {
+            String implementer = cpuInfo.getField("CPU implementer");
+            String part = cpuInfo.getField("CPU part");
+            model = !implementer.isEmpty() || !part.isEmpty()
+                    ? "ARM implementer=" + (implementer.isEmpty() ? "not available" : implementer)
+                      + ", part=" + (part.isEmpty() ? "not available" : part)
+                    : "not available";
+        }
+
+        long[] previousBusy = new long[cores];
+        long[] previousIdle = new long[cores];
+        for (int core = 0; core < cores; core++) {
+            previousBusy[core] = cpuInfo.getBusy(core);
+            previousIdle[core] = cpuInfo.getIdle(core);
+        }
+        Thread.sleep(1000);
+
+        double totalLoad = 0;
+        int readableCores = 0;
+        System.out.println("cores:  " + cores);
+        System.out.println("model:  " + model);
+        for (int core = 0; core < cores; core++) {
+            long busy = cpuInfo.getBusy(core);
+            long idle = cpuInfo.getIdle(core);
+            double load = cpuInfo.calculateLoad(previousBusy[core], previousIdle[core], busy, idle);
+            if (load < 0) {
+                System.out.printf("core %d: load=not available%n", core);
+            } else {
+                totalLoad += load;
+                readableCores++;
+                System.out.printf("core %d: load=%.1f%%%n", core, load * 100);
+            }
+        }
+        System.out.printf("average load: %s%n", readableCores == 0
+                ? "not available"
+                : String.format("%.1f%%", totalLoad / readableCores * 100));
         System.out.println("memory: total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
 
         idLookup pci = idLookup.pci();

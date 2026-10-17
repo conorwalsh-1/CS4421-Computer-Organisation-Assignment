@@ -1,6 +1,4 @@
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Information about the processor, read from /proc/cpuinfo and /proc/stat.
@@ -59,6 +57,21 @@ public class cpuInfo
     {
         long[] f = fields(core);
         return f == null ? -1 : f[3] + f[4];
+    }
+
+    /** Calculate CPU load from two readings of the cumulative tick counters. */
+    public static double calculateLoad(long prevBusy, long prevIdle, long busy, long idle)
+    {
+        if (prevBusy < 0 || prevIdle < 0 || busy < 0 || idle < 0)
+            return -1;
+
+        long busyDelta = busy - prevBusy;
+        long idleDelta = idle - prevIdle;
+        long totalDelta = busyDelta + idleDelta;
+        if (busyDelta < 0 || idleDelta < 0 || totalDelta <= 0)
+            return -1;
+
+        return (double) busyDelta / totalDelta;
     }
 
     /** The numbers from the "cpuN" line of /proc/stat, or null if there is no such core. */
