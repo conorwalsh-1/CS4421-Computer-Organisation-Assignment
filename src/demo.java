@@ -11,24 +11,24 @@ public class demo
 {
     public static void main(String[] args) throws Exception
     {
-        int cores = cpuInfo.getCount();
-        String model = cpuInfo.getModel();
-        if (model.equals("unknown")) {
-            String implementer = cpuInfo.getField("CPU implementer");
-            String part = cpuInfo.getField("CPU part");
-            model = !implementer.isEmpty() || !part.isEmpty()
-                    ? "ARM implementer=" + (implementer.isEmpty() ? "not available" : implementer)
+        int cores = cpuInfo.getCount(); /*gets the no. of cores */
+        String model = cpuInfo.getModel();/*gets the model name */
+        if (model.equals("unknown")) {/*Arm64 machines mightn't have a model name field so the getModel method cant find it */
+            String implementer = cpuInfo.getField("CPU implementer");/*I get the implementer instead */
+            String part = cpuInfo.getField("CPU part");/*And the model */
+            model = !implementer.isEmpty() || !part.isEmpty()/*Model = the Cpu implementer and the part number only if theres no implementer */
+                    ? "ARM implementer=" + (implementer.isEmpty() ? "not available" : implementer)/*Says not available if the implementer var is empty  */
                       + ", part=" + (part.isEmpty() ? "not available" : part)
                     : "not available";
         }
 
-        long[] previousBusy = new long[cores];
+        long[] previousBusy = new long[cores];/*makes a list to store the busy and idle times of each core */
         long[] previousIdle = new long[cores];
         for (int core = 0; core < cores; core++) {
-            previousBusy[core] = cpuInfo.getBusy(core);
+            previousBusy[core] = cpuInfo.getBusy(core);/*fills the list with each cores busy and idle times */
             previousIdle[core] = cpuInfo.getIdle(core);
         }
-        Thread.sleep(1000);
+        Thread.sleep(1000);/*waits to take the next reading */
 
         double totalLoad = 0;
         int readableCores = 0;
@@ -39,16 +39,16 @@ public class demo
             long idle = cpuInfo.getIdle(core);
             double load = cpuInfo.calculateLoad(previousBusy[core], previousIdle[core], busy, idle);
             if (load < 0) {
-                System.out.printf("core %d: load=not available%n", core);
+                System.out.printf("core %d: load=not available%n", core);/*checks the load is greate than 0 */
             } else {
-                totalLoad += load;
+                totalLoad += load;/*totals all the loads on each core */
                 readableCores++;
-                System.out.printf("core %d: load=%.1f%%%n", core, load * 100);
+                System.out.printf("core %d: load=%.1f%%%n", core, load * 100);/*Returns the load on each core */
             }
         }
         System.out.printf("average load: %s%n", readableCores == 0
                 ? "not available"
-                : String.format("%.1f%%", totalLoad / readableCores * 100));
+                : String.format("%.1f%%", totalLoad / readableCores * 100));/*Return the average load */
         System.out.println("memory: total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
 
         idLookup pci = idLookup.pci();
