@@ -32,6 +32,11 @@ Notes:
 
 - `getBusy` and `getIdle` count ticks since boot. To get the CPU load, read both
   twice, about a second apart, and work from the differences.
+- A single reading says nothing about current load: it is only a cumulative
+  counter. The load is delta busy divided by delta busy plus delta idle.
+- Idle includes time when the CPU has no work and runs an idle instruction,
+  such as x86 `HLT` or the `W1L3` idle state; timer interrupts let the
+  scheduler wake up and switch tasks (`W2L6`).
 - On arm64 there is no `model name` in `/proc/cpuinfo`: `getModel()` returns
   "unknown". Use `getField("CPU part")` or `getField("CPU implementer")`.
 - `usbInfo` lists root hubs as well as plugged-in devices, in the same order as `lsusb`, and `getBusNumber(i)` and `getDeviceNumber(i)` give the numbers that `lsusb` prints as "Bus 001 Device 002". A virtual machine or
