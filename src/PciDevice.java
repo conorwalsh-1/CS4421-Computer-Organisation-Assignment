@@ -81,7 +81,7 @@ public class PciDevice {
     public int getDeviceId() {return deviceId;}
     public int getClassCode() {return classCode;}
 
-    /gi** The vendor's name, or null if it is not in pci.ids. */
+    /** The vendor's name, or null if it is not in pci.ids. */
     public String getVendorName() {return vendorName;}
 
     /** The device's name, or null if it is not in pci.ids. */
