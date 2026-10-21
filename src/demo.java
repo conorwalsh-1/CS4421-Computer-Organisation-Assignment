@@ -10,7 +10,9 @@
 public class demo
 {
     public static void main(String[] args) throws Exception
-    {
+    {   System.out.println();
+        System.out.println("CPU");
+        System.out.println();
         int cores = cpuInfo.getCount(); /*gets the no. of cores */
         String model = cpuInfo.getModel();/*gets the model name */
         if (model.equals("unknown")) {/*Arm64 machines mightn't have a model name field so the getModel method cant find it */
@@ -49,7 +51,16 @@ public class demo
         System.out.printf("average load: %s%n", readableCores == 0
                 ? "not available"
                 : String.format("%.1f%%", totalLoad / readableCores * 100));/*Return the average load */
+
+        System.out.println();
+        System.out.println("Memory");
+        System.out.println();
+
         System.out.println("memory: total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
+
+        System.out.println();
+        System.out.println("PCI");
+        System.out.println();
 
         idLookup pci = idLookup.pci();
         System.out.println("PCI devices: " + pciInfo.getCount());
@@ -60,6 +71,10 @@ public class demo
                               pci.vendorName(vendor), pci.deviceName(vendor, device));
         }
 
+        System.out.println();
+        System.out.println("USB");
+        System.out.println();
+
         idLookup usb = idLookup.usb();
         System.out.println("USB devices: " + usbInfo.getCount());
         for (int i = 0; i < usbInfo.getCount(); i++) {
@@ -69,5 +84,17 @@ public class demo
                               usbInfo.getDeviceNumber(i), vendor, product,
                               usb.vendorName(vendor), usb.deviceName(vendor, product));
         }
+        System.out.println();
+        System.out.println("Summary");
+        System.out.println();
+        String averageLoad = readableCores == 0
+            ? "not available"
+            : String.format("%.1f%%", totalLoad / readableCores * 100);
+        System.out.printf("This computer has a %s CPU with %d cores, an average load of %s, "
+                          + "%d KiB of memory used out of %d KiB, and %d PCI and %d USB devices.%n", /*Formatted summary */
+                          model, cores, averageLoad, memInfo.getUsed(), memInfo.getTotal(),
+                          pciInfo.getCount(), usbInfo.getCount());
+
+
     }
 }
