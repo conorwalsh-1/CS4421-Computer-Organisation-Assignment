@@ -22,7 +22,9 @@ public class PciDevice {
     private final String vendorName;
     private final String deviceName;
     private final String className;
-
+    /**
+     * Constructor for each PCI device instance
+     */
     public PciDevice(String address, int bus, int device, int function, int vendorId, int deviceId,
             int classCode, String vendorName, String deviceName, String className) {
         this.address = address;
@@ -79,7 +81,7 @@ public class PciDevice {
     public int getDeviceId() {return deviceId;}
     public int getClassCode() {return classCode;}
 
-    /** The vendor's name, or null if it is not in pci.ids. */
+    /gi** The vendor's name, or null if it is not in pci.ids. */
     public String getVendorName() {return vendorName;}
 
     /** The device's name, or null if it is not in pci.ids. */
