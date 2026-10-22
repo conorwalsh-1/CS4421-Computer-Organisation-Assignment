@@ -8,11 +8,6 @@ import java.util.Scanner;
  * Build:  javac -d out src/*.java
  * Run:    java -cp out demo        (run it from the folder that contains the ids folder)
  */
-
-import java.util.ArrayList;
-import java.util.List;
-import java.io.IOException;
-
 public class demo
 {
     private static final String RESET = "\u001B[0m";
@@ -168,24 +163,8 @@ public class demo
             return;
         }
 
-        for (UsbDevice usb : devices) {
-            String vendorName = usb.getVendorName();
-            String productName = usb.getProductName();
-            if (vendorName == null)
-                vendorName = "Unknown vendor";
-            if (productName == null)
-                productName = "Unknown product";
-
-            String vendorId = "N/A";
-            String productId = "N/A";
-            if (usb.getVendorId() >= 0)
-                vendorId = String.format("%04x", usb.getVendorId());
-            if (usb.getProductId() >= 0)
-                productId = String.format("%04x", usb.getProductId());
-
-            System.out.println("  Bus " + usb.getBusNumber() + " Device " + usb.getDeviceNumber() + ": ID "
-                    + vendorId + ":" + productId + " " + vendorName + " " + productName);
-        }
+        for (UsbDevice usb : devices)
+            System.out.println("  " + usb.describe());
     }
 
     /** Displays a one-paragraph summary of the whole machine. */
@@ -243,55 +222,20 @@ public class demo
 
     /** The average of the readable core loads as a percentage, or "not available". */
     private static String averageLoadText(double[] loads)
-{
-    double totalLoad = 0;
-    int readableCores = 0;
+    {
+        double totalLoad = 0;
+        int readableCores = 0;
 
-    for (double load : loads) {
-        if (load >= 0) {
-            totalLoad += load;
-            readableCores++;
-        }
-    }
-
-    if (readableCores == 0)
-        return "not available";
-
-    return String.format("%.1f%%", totalLoad / readableCores * 100);
-}
-        
-      List<PciDevice> pciDevices = PciDevice.readAll(); // list of PciDevice objects
-        System.out.println("PCI devices: " + pciDevices.size());
-
-        for (PciDevice device : pciDevices) {
-            System.out.println("  " + device.describe()); // print all PCI descriptions
+        for (double load : loads) {
+            if (load >= 0) {
+                totalLoad += load;
+                readableCores++;
+            }
         }
 
-        idLookup usb = null;
-        try {
-            usb = idLookup.usb();
-        } catch (IOException e) {
-            System.err.println("USB names unavailable: " + e.getMessage());
-        }
+        if (readableCores == 0)
+            return "not available";
 
-        System.out.println("USB devices: " + usbInfo.getCount());
-
-        List<UsbDevice> usbDevices = new ArrayList<>(); // list of UsbDevice objects
-
-        for (int i = 0; i < usbInfo.getCount(); i++) { // loop through all USB devices, gets their data and creates a
-                                                       // UsbDevice object for each
-            int vendorId = usbInfo.getVendorId(i);
-            int productId = usbInfo.getProductId(i);
-
-            String vendorName = usb == null ? null : usb.vendorName(vendorId);
-            String productName = usb == null ? null : usb.deviceName(vendorId, productId);
-
-            usbDevices.add(new UsbDevice(usbInfo.getBusNumber(i), usbInfo.getDeviceNumber(i), vendorId, productId,
-                    vendorName, productName));
-        }
-
-        for (UsbDevice device : usbDevices) {
-            System.out.println("  " + device.describe()); // print all USB descriptions
-        }
+        return String.format("%.1f%%", totalLoad / readableCores * 100);
     }
 }
