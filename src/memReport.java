@@ -14,16 +14,9 @@ public class memReport {
     private static final long KiB_PER_MiB = 1024;
     private static final long KiB_PER_GiB = 1024 * 1024;
 
-    private static final String RESET = "\u001B[0m";
-    private static final String RED = "\u001B[31m";
-    private static final String GREEN = "\u001B[32m";
-    private static final String YELLOW = "\u001B[33m";
-    private static final String CYAN = "\u001B[36m";
-
     private static final int BAR_WIDTH = 40;
     private static final int SAMPLES = 20;
     private static final int SAMPLE_GAP_MS = 500;
-    private static final int GRAPH_ROWS = 10;
 
     /** Percentage of memory in use (0 to 100), or -1 if it cannot be worked out. */
     public static double getPercentUsed() {
@@ -49,7 +42,7 @@ public class memReport {
     public static void print() {
         double percent = getPercentUsed();
 
-        System.out.println(GREEN + "Memory" + RESET);
+        System.out.println(textChart.GREEN + "Memory" + textChart.RESET);
         System.out.println();
         System.out.println("  Total:     " + formatKiB(memInfo.getTotal()));
         System.out.println("  Used:      " + formatKiB(memInfo.getUsed()));
@@ -61,8 +54,7 @@ public class memReport {
         System.out.printf("  In use:    %.1f%%%n", percent);
         System.out.println();
 
-        System.out.println("  In use    [" + colourFor(percent) + bar(percent, BAR_WIDTH) + RESET + "] "
-                + String.format("%.1f%%", percent));
+        System.out.println("  In use    " + textChart.percentBar(percent, BAR_WIDTH));
         System.out.println();
         printBreakdown();
         System.out.println();
@@ -83,13 +75,14 @@ public class memReport {
         for (int taken = 1; taken <= SAMPLES; taken++) {
             history[taken - 1] = getPercentUsed();
 
-            clearScreen();
+            textChart.clearScreen();
             print();
             System.out.println();
-            printGraph(history, taken);
+            textChart.graph("Memory use over time (one reading every " + (SAMPLE_GAP_MS / 1000.0) + " s)",
+                    history, taken, SAMPLES);
             if (taken < SAMPLES) {
-                System.out.println(CYAN + "  Reading " + taken + " of " + SAMPLES + "..." + RESET);
-                pause(SAMPLE_GAP_MS);
+                System.out.println(textChart.CYAN + "  Reading " + taken + " of " + SAMPLES + "..." + textChart.RESET);
+                textChart.pause(SAMPLE_GAP_MS);
             }
         }
     }
@@ -111,11 +104,12 @@ public class memReport {
             cacheWidth = BAR_WIDTH - usedWidth;
         int freeWidth = BAR_WIDTH - usedWidth - cacheWidth;
 
-        System.out.println("  Breakdown [" + RED + repeat('█', usedWidth) + YELLOW + repeat('▓', cacheWidth)
-                + GREEN + repeat('░', freeWidth) + RESET + "]");
-        System.out.println("            " + RED + "█" + RESET + " used " + formatKiB(used)
-                + "   " + YELLOW + "▓" + RESET + " cache " + formatKiB(cache)
-                + "   " + GREEN + "░" + RESET + " free " + formatKiB(free));
+        System.out.println("  Breakdown [" + textChart.RED + textChart.repeat('█', usedWidth)
+                + textChart.YELLOW + textChart.repeat('▓', cacheWidth)
+                + textChart.GREEN + textChart.repeat('░', freeWidth) + textChart.RESET + "]");
+        System.out.println("            " + textChart.RED + "█" + textChart.RESET + " used " + formatKiB(used)
+                + "   " + textChart.YELLOW + "▓" + textChart.RESET + " cache " + formatKiB(cache)
+                + "   " + textChart.GREEN + "░" + textChart.RESET + " free " + formatKiB(free));
     }
 
     /** A bar for swap space, or a note if the machine has none. */
@@ -133,81 +127,7 @@ public class memReport {
 
         long swapUsed = swapTotal - swapFree;
         double percent = swapUsed * 100.0 / swapTotal;
-        System.out.println("  Swap      [" + colourFor(percent) + bar(percent, BAR_WIDTH) + RESET + "] "
-                + String.format("%.1f%%", percent) + "  (" + formatKiB(swapUsed) + " of "
-                + formatKiB(swapTotal) + ")");
-    }
-
-    /**
-     * A graph of memory use over time, one column per reading, oldest on the left.
-     * Each row's label is the value at the middle of that row, and each row is split
-     * into a lower and upper half, so a bar's top lines up with its label to within 5%.
-     */
-    private static void printGraph(double[] history, int count) {
-        System.out.println("  Memory use over time (one reading every " + (SAMPLE_GAP_MS / 1000.0) + " s)");
-        System.out.println();
-
-        int percentPerRow = 100 / GRAPH_ROWS;
-        for (int row = GRAPH_ROWS; row >= 0; row--) {
-            String line = String.format("  %3d%% │", row * percentPerRow);
-            for (int i = 0; i < count; i++) {
-                // the bar's height in halves of a row, measured from the 0% line
-                int halves = (int) Math.round(history[i] / (percentPerRow / 2.0));
-                boolean lower = row > 0 && halves >= row * 2;
-                boolean upper = halves >= row * 2 + 1;
-
-                if (lower && upper) {
-                    line = line + colourFor(history[i]) + "██" + RESET;
-                } else if (lower) {
-                    line = line + colourFor(history[i]) + "▄▄" + RESET;
-                } else if (upper) {
-                    line = line + colourFor(history[i]) + "▀▀" + RESET;
-                } else {
-                    line = line + "  ";
-                }
-            }
-            System.out.println(line);
-        }
-        System.out.println("       └" + repeat('─', SAMPLES * 2));
-        System.out.println("        oldest" + repeat(' ', SAMPLES * 2 - 12) + "newest");
-    }
-
-    /** A bar of 'width' characters, filled in proportion to 'percent'. */
-    private static String bar(double percent, int width) {
-        int filled = (int) Math.round(percent / 100 * width);
-        if (filled > width)
-            filled = width;
-        if (filled < 0)
-            filled = 0;
-        return repeat('█', filled) + repeat('░', width - filled);
-    }
-
-    /** Green under 60%, yellow under 85%, red otherwise. */
-    private static String colourFor(double percent) {
-        if (percent < 60)
-            return GREEN;
-        if (percent < 85)
-            return YELLOW;
-        return RED;
-    }
-
-    private static String repeat(char c, int count) {
-        String s = "";
-        for (int i = 0; i < count; i++)
-            s = s + c;
-        return s;
-    }
-
-    private static void clearScreen() {
-        System.out.print("\033[H\033[2J");
-        System.out.flush();
-    }
-
-    private static void pause(int ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
+        System.out.println("  Swap      " + textChart.percentBar(percent, BAR_WIDTH)
+                + "  (" + formatKiB(swapUsed) + " of " + formatKiB(swapTotal) + ")");
     }
 }

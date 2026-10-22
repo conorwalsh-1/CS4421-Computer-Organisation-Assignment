@@ -109,23 +109,10 @@ public class demo
         System.out.println();
     }
 
-    /** Displays the CPU model, the load on each core and the average load. */
+    /** Displays the CPU model, caches, a load bar for each core and a graph of the average load. */
     private static void cpuMenu()
     {
-        heading("CPU");
-        String model = cpuModel();
-        double[] loads = measureLoads();
-
-        System.out.println("cores:  " + loads.length);
-        System.out.println("model:  " + model);
-        for (int core = 0; core < loads.length; core++) {
-            if (loads[core] < 0) {
-                System.out.printf("core %d: load=not available%n", core);/*checks the load is greater than 0 */
-            } else {
-                System.out.printf("core %d: load=%.1f%%%n", core, loads[core] * 100);/*Returns the load on each core */
-            }
-        }
-        System.out.println("average load: " + averageLoadText(loads));
+        cpuReport.printWithHistory();
     }
 
     /** Displays total, used and available memory and the percentage in use. */
@@ -174,24 +161,9 @@ public class demo
         double[] loads = measureLoads();
         System.out.printf("This computer has a %s CPU with %d cores, an average load of %s, "
                           + "%s of memory used out of %s, and %d PCI and %d USB devices.%n", /*Formatted summary */
-                          cpuModel(), loads.length, averageLoadText(loads),
+                          cpuReport.getModel(), loads.length, averageLoadText(loads),
                           memReport.formatKiB(memInfo.getUsed()), memReport.formatKiB(memInfo.getTotal()),
                           pciInfo.getCount(), usbInfo.getCount());
-    }
-
-    /** The CPU model name, or the ARM implementer and part if there is no model name. */
-    private static String cpuModel()
-    {
-        String model = cpuInfo.getModel();/*gets the model name */
-        if (model.equals("unknown")) {/*Arm64 machines mightn't have a model name field so the getModel method cant find it */
-            String implementer = cpuInfo.getField("CPU implementer");/*I get the implementer instead */
-            String part = cpuInfo.getField("CPU part");/*And the model */
-            model = !implementer.isEmpty() || !part.isEmpty()/*Model = the Cpu implementer and the part number only if theres no implementer */
-                    ? "ARM implementer=" + (implementer.isEmpty() ? "not available" : implementer)/*Says not available if the implementer var is empty  */
-                      + ", part=" + (part.isEmpty() ? "not available" : part)
-                    : "not available";
-        }
-        return model;
     }
 
     /** The load on each core (0 to 1) over one second, or -1 for a core that cannot be read. */
