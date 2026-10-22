@@ -3,8 +3,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * One PCI device, with its address, ID numbers and the names looked up for
- * them.
+ * One PCI device, with its address, ID numbers and the names looked up for them.
  *
  * An address is domain:bus:device.function. The bus number is 8 bits (up to 256
  * buses), the device number 5 bits (up to 32 devices on a bus) and the function
@@ -23,7 +22,7 @@ public class PciDevice {
     private final String vendorName;
     private final String deviceName;
     private final String className;
-
+  
     /**
      * Constructor for each PCI device instance
      */
@@ -75,48 +74,22 @@ public class PciDevice {
         return list;
     }
 
-    public String getAddress() {
-        return address;
-    }
-
-    public int getBus() {
-        return bus;
-    }
-
-    public int getDevice() {
-        return device;
-    }
-
-    public int getFunction() {
-        return function;
-    }
-
-    public int getVendorId() {
-        return vendorId;
-    }
-
-    public int getDeviceId() {
-        return deviceId;
-    }
-
-    public int getClassCode() {
-        return classCode;
-    }
+    public String getAddress() {return address;}
+    public int getBus() {return bus;}
+    public int getDevice() {return device;}
+    public int getFunction() {return function;}
+    public int getVendorId() {return vendorId;}
+    public int getDeviceId() {return deviceId;}
+    public int getClassCode() {return classCode;}
 
     /** The vendor's name, or null if it is not in pci.ids. */
-    public String getVendorName() {
-        return vendorName;
-    }
+    public String getVendorName() {return vendorName;}
 
     /** The device's name, or null if it is not in pci.ids. */
-    public String getDeviceName() {
-        return deviceName;
-    }
+    public String getDeviceName() {return deviceName;}
 
     /** The class name (sub class if known, else base class), or null. */
-    public String getClassName() {
-        return className;
-    }
+    public String getClassName() {return className;}
 
     /** One line describing the device: address, class, names and IDs. */
     public String describe() {

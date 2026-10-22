@@ -2,8 +2,8 @@
 //the details are passed in when the object is created
 
 class UsbDevice {
-    // why private? stops other classes from directly accessing the variables
-    // why final? the values can't be reassigned after the constructor runs
+    //why private? stops other classes from directly accessing the variables
+    //why final? the values can't be reassigned after the constructor runs
     private final int busNumber;
     private final int deviceNumber;
     private final int vendorId;
@@ -11,10 +11,10 @@ class UsbDevice {
     private final String vendorName;
     private final String productName;
 
-    // constructor
-
-    // sets the values for a new USB device
-    UsbDevice(int busNumber, int deviceNumber, int vendorId, int productId, String vendorName, String productName) {
+    //constructor
+    
+    //sets the values for a new USB device
+    UsbDevice(int busNumber, int deviceNumber, int vendorId, int productId, String vendorName, String productName){
         this.busNumber = busNumber;
         this.deviceNumber = deviceNumber;
         this.vendorId = vendorId;
