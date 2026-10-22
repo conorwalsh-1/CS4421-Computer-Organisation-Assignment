@@ -252,16 +252,113 @@ public class demo
         }
     }
 
-    /** Displays a one-paragraph summary of the whole machine. */
+    /**
+     * Displays the most important figures for the whole machine on one screen: CPU
+     * load bars, memory bars, PCI devices by vendor and the USB devices, then a
+     * one-sentence summary.
+     */
     private static void summaryMenu()
     {
         heading("Summary");
+        System.out.println("  " + DIM + "Measuring CPU load for one second..." + RESET);
         double[] loads = measureLoads();
-        System.out.printf("This computer has a %s CPU with %d cores, an average load of %s, "
-                          + "%s of memory used out of %s, and %d PCI and %d USB devices.%n", /*Formatted summary */
+        List<PciDevice> pciDevices = PciDevice.readAll();
+        List<UsbDevice> usbDevices = UsbInspector.readDevices();
+        clearScreen();
+        heading("Summary");
+
+        summaryCpu(loads);
+        summaryMemory();
+
+        subheading("PCI  " + RESET + DIM + pciDevices.size() + " devices, by vendor");
+        if (pciDevices.isEmpty())
+            System.out.println("  none found");
+        else
+            PciAnalysis.printCountByVendor(pciDevices);
+
+        subheading("USB  " + RESET + DIM + usbDevices.size() + " devices");
+        if (usbDevices.isEmpty())
+            System.out.println("  none found");
+        for (UsbDevice usb : usbDevices)
+            System.out.println("  " + nameOr(usb.getProductName(), "Unknown product")
+                    + DIM + " · " + nameOr(usb.getVendorName(), "Unknown vendor") + RESET);
+
+        System.out.println();
+        System.out.println("  " + DIM + textChart.repeat('─', MENU_WIDTH) + RESET);
+        String sentence = String.format("This computer has a %s CPU with %d cores, an average load of %s, "
+                          + "%s of memory used out of %s, and %d PCI and %d USB devices.", /*Formatted summary */
                           cpuReport.getModel(), loads.length, averageLoadText(loads),
                           memReport.formatKiB(memInfo.getUsed()), memReport.formatKiB(memInfo.getTotal()),
-                          pciInfo.getCount(), usbInfo.getCount());
+                          pciDevices.size(), usbDevices.size());
+        printWrapped(sentence, MENU_WIDTH);
+    }
+
+    /** Prints the text over as many lines as needed, breaking only between words. */
+    private static void printWrapped(String text, int width)
+    {
+        String line = "";
+        for (String word : text.split(" ")) {
+            if (!line.isEmpty() && line.length() + 1 + word.length() > width) {
+                System.out.println("  " + line);
+                line = "";
+            }
+            if (line.isEmpty())
+                line = word;
+            else
+                line = line + " " + word;
+        }
+        if (!line.isEmpty())
+            System.out.println("  " + line);
+    }
+
+    /** The CPU part of the summary: model, cores, caches, average load and a small bar for each core. */
+    private static void summaryCpu(double[] loads)
+    {
+        subheading("CPU");
+        System.out.println("  Model     " + cpuReport.getModel());
+        System.out.println("  Cores     " + loads.length);
+        System.out.println("  Caches    " + cpuReport.cacheSummary());
+
+        double average = averageLoad(loads);
+        if (average < 0) {
+            System.out.println("  Load      not available");
+            return;
+        }
+        System.out.println("  Average   " + textChart.percentBar(average * 100, 40));
+
+        // two cores per line, each with a short bar
+        for (int core = 0; core < loads.length; core++) {
+            String label = String.format("Core %-3d", core);
+            String bar = "not available";
+            int barLength = bar.length();
+            if (loads[core] >= 0) {
+                bar = textChart.percentBar(loads[core] * 100, 12);
+                // "[" + 12 bar characters + "] " + the percentage, without the colour codes
+                barLength = 15 + String.format("%.1f%%", loads[core] * 100).length();
+            }
+
+            if (core % 2 == 0)
+                System.out.print("  " + DIM + label + RESET + bar + textChart.repeat(' ', 21 - barLength));
+            else
+                System.out.println("     " + DIM + label + RESET + bar);
+        }
+        if (loads.length % 2 == 1)
+            System.out.println();
+    }
+
+    /** The memory part of the summary: how much is used, an in-use bar and the breakdown bar. */
+    private static void summaryMemory()
+    {
+        subheading("Memory");
+        double percent = memReport.getPercentUsed();
+        if (percent < 0) {
+            System.out.println("  not available");
+            return;
+        }
+        System.out.println("  Used      " + memReport.formatKiB(memInfo.getUsed())
+                + " of " + memReport.formatKiB(memInfo.getTotal()));
+        System.out.println("  In use    " + textChart.percentBar(percent, 40));
+        memReport.printBreakdown();
     }
 
     /** The load on each core (0 to 1) over one second, or -1 for a core that cannot be read. */
