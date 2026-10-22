@@ -243,19 +243,23 @@ public class demo
 
     /** The average of the readable core loads as a percentage, or "not available". */
     private static String averageLoadText(double[] loads)
-    {
-        double totalLoad = 0;
-        int readableCores = 0;
-        for (double load : loads) {
-            if (load >= 0) {
-                totalLoad += load;/*totals all the loads on each core */
-                readableCores++;
-            }
+{
+    double totalLoad = 0;
+    int readableCores = 0;
+
+    for (double load : loads) {
+        if (load >= 0) {
+            totalLoad += load;
+            readableCores++;
         }
-        if (readableCores == 0)
-            return "not available";
-        return String.format("%.1f%%", totalLoad / readableCores * 100);/*Return the average load */
-      
+    }
+
+    if (readableCores == 0)
+        return "not available";
+
+    return String.format("%.1f%%", totalLoad / readableCores * 100);
+}
+        
       List<PciDevice> pciDevices = PciDevice.readAll(); // list of PciDevice objects
         System.out.println("PCI devices: " + pciDevices.size());
 
