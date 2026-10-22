@@ -1,19 +1,203 @@
+import java.util.List;
+import java.util.Scanner;
+
 /**
- * A short example that shows how to call each provided class. It prints raw
- * numbers and a few names. It is NOT a solution to the assignment: you still
- * have to measure load, store the devices, sort them, analyse them and present
- * the results.
+ * The main program. Shows a menu and prints the CPU, memory, PCI, USB or summary
+ * section that the user picks, until they choose to exit.
  *
- * Build:  javac *.java
- * Run:    java demo        (run it from the folder that contains the ids folder)
+ * Build:  javac -d out src/*.java
+ * Run:    java -cp out demo        (run it from the folder that contains the ids folder)
  */
 public class demo
 {
-    public static void main(String[] args) throws Exception
-    {   System.out.println();
-        System.out.println("CPU");
+    private static final String RESET = "\u001B[0m";
+    private static final String RED = "\u001B[31m";
+    private static final String GREEN = "\u001B[32m";
+    private static final String CYAN = "\u001B[36m";
+    private static final String PURPLE = "\u001B[35m";
+
+    public static void main(String[] args)
+    {
+        Scanner sc = new Scanner(System.in);
+
+        while (true) {
+            clearScreen();
+            printBanner();
+            printMenu();
+
+            if (!sc.hasNextInt()) {/*stops the program crashing if a letter is typed */
+                if (!sc.hasNext())/*no more input at all, so stop */
+                    return;
+                sc.nextLine();/*throws away the whole line that was typed */
+                System.out.println(RED + "Invalid choice, please pick a number." + RESET);
+                waitForEnter(sc);
+                continue;
+            }
+            int input = sc.nextInt();
+            sc.nextLine();/*clears the rest of the line so waitForEnter works */
+
+            clearScreen();
+            switch (input) {
+                case 1:
+                    cpuMenu();
+                    break;
+                case 2:
+                    memoryMenu();
+                    break;
+                case 3:
+                    pciMenu();
+                    break;
+                case 4:
+                    usbMenu();
+                    break;
+                case 5:
+                    summaryMenu();
+                    break;
+                case 0:
+                    System.out.println("Goodbye.");
+                    return;
+                default:
+                    System.out.println(RED + "Invalid option, try again." + RESET);
+            }
+            waitForEnter(sc);
+        }
+    }
+
+    /** Prints the title at the top of the menu. */
+    private static void printBanner()
+    {
+        System.out.println(RED);
+        System.out.println("╔══════════════════════════════════════╗");
+        System.out.println("║      CS4421  HARDWARE  INSPECTOR     ║");
+        System.out.println("╚══════════════════════════════════════╝" + RESET);
+    }
+
+    /** Prints the list of options. */
+    private static void printMenu()
+    {
+        System.out.println(PURPLE);
+        System.out.println("  1. CPU");
+        System.out.println("  2. Memory");
+        System.out.println("  3. PCI");
+        System.out.println("  4. USB");
+        System.out.println("  5. Summary");
+        System.out.println("  0. Exit" + RESET);
         System.out.println();
-        int cores = cpuInfo.getCount(); /*gets the no. of cores */
+        System.out.print("Pick an option: ");
+    }
+
+    /** Clears the console. */
+    private static void clearScreen()
+    {
+        System.out.print("\033[H\033[2J");
+        System.out.flush();
+    }
+
+    /** Waits for the user to press Enter before going back to the menu. */
+    private static void waitForEnter(Scanner sc)
+    {
+        System.out.println();
+        System.out.print(CYAN + "Press Enter to return to the menu..." + RESET);
+        if (sc.hasNextLine())
+            sc.nextLine();
+    }
+
+    /** Prints a section heading. */
+    private static void heading(String title)
+    {
+        System.out.println(GREEN + title + RESET);
+        System.out.println();
+    }
+
+    /** Displays the CPU model, the load on each core and the average load. */
+    private static void cpuMenu()
+    {
+        heading("CPU");
+        String model = cpuModel();
+        double[] loads = measureLoads();
+
+        System.out.println("cores:  " + loads.length);
+        System.out.println("model:  " + model);
+        for (int core = 0; core < loads.length; core++) {
+            if (loads[core] < 0) {
+                System.out.printf("core %d: load=not available%n", core);/*checks the load is greater than 0 */
+            } else {
+                System.out.printf("core %d: load=%.1f%%%n", core, loads[core] * 100);/*Returns the load on each core */
+            }
+        }
+        System.out.println("average load: " + averageLoadText(loads));
+    }
+
+    /** Displays total, used and available memory and the percentage in use. */
+    private static void memoryMenu()
+    {
+        memReport.print();
+    }
+
+    /** Displays every PCI device in address order, then the counts by vendor and by class. */
+    private static void pciMenu()
+    {
+        heading("PCI");
+        List<PciDevice> devices = PciAnalysis.sortByAddress(PciDevice.readAll());
+        System.out.println("PCI devices: " + devices.size());
+        for (PciDevice d : devices)
+            System.out.println("  " + d.describe());
+
+        System.out.println();
+        System.out.println("Devices by vendor:");
+        PciAnalysis.printCountByVendor(devices);
+
+        System.out.println();
+        System.out.println("Devices by class:");
+        PciAnalysis.printCountByClass(devices);
+    }
+
+    /** Displays every USB device with its bus, device number, IDs and names. */
+    private static void usbMenu()
+    {
+        heading("USB");
+        List<UsbDevice> devices = UsbInspector.readDevices();
+        System.out.println("USB devices: " + devices.size());
+        if (devices.isEmpty()) {
+            System.out.println("No USB devices found");
+            return;
+        }
+
+        for (UsbDevice usb : devices) {
+            String vendorName = usb.getVendorName();
+            String productName = usb.getProductName();
+            if (vendorName == null)
+                vendorName = "Unknown vendor";
+            if (productName == null)
+                productName = "Unknown product";
+
+            String vendorId = "N/A";
+            String productId = "N/A";
+            if (usb.getVendorId() >= 0)
+                vendorId = String.format("%04x", usb.getVendorId());
+            if (usb.getProductId() >= 0)
+                productId = String.format("%04x", usb.getProductId());
+
+            System.out.println("  Bus " + usb.getBusNumber() + " Device " + usb.getDeviceNumber() + ": ID "
+                    + vendorId + ":" + productId + " " + vendorName + " " + productName);
+        }
+    }
+
+    /** Displays a one-paragraph summary of the whole machine. */
+    private static void summaryMenu()
+    {
+        heading("Summary");
+        double[] loads = measureLoads();
+        System.out.printf("This computer has a %s CPU with %d cores, an average load of %s, "
+                          + "%s of memory used out of %s, and %d PCI and %d USB devices.%n", /*Formatted summary */
+                          cpuModel(), loads.length, averageLoadText(loads),
+                          memReport.formatKiB(memInfo.getUsed()), memReport.formatKiB(memInfo.getTotal()),
+                          pciInfo.getCount(), usbInfo.getCount());
+    }
+
+    /** The CPU model name, or the ARM implementer and part if there is no model name. */
+    private static String cpuModel()
+    {
         String model = cpuInfo.getModel();/*gets the model name */
         if (model.equals("unknown")) {/*Arm64 machines mightn't have a model name field so the getModel method cant find it */
             String implementer = cpuInfo.getField("CPU implementer");/*I get the implementer instead */
@@ -23,78 +207,48 @@ public class demo
                       + ", part=" + (part.isEmpty() ? "not available" : part)
                     : "not available";
         }
+        return model;
+    }
 
+    /** The load on each core (0 to 1) over one second, or -1 for a core that cannot be read. */
+    private static double[] measureLoads()
+    {
+        int cores = cpuInfo.getCount(); /*gets the no. of cores */
         long[] previousBusy = new long[cores];/*makes a list to store the busy and idle times of each core */
         long[] previousIdle = new long[cores];
         for (int core = 0; core < cores; core++) {
             previousBusy[core] = cpuInfo.getBusy(core);/*fills the list with each cores busy and idle times */
             previousIdle[core] = cpuInfo.getIdle(core);
         }
-        Thread.sleep(1000);/*waits to take the next reading */
 
-        double totalLoad = 0;
-        int readableCores = 0;
-        System.out.println("cores:  " + cores);
-        System.out.println("model:  " + model);
+        try {
+            Thread.sleep(1000);/*waits to take the next reading */
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        double[] loads = new double[cores];
         for (int core = 0; core < cores; core++) {
             long busy = cpuInfo.getBusy(core);
             long idle = cpuInfo.getIdle(core);
-            double load = cpuInfo.calculateLoad(previousBusy[core], previousIdle[core], busy, idle);
-            if (load < 0) {
-                System.out.printf("core %d: load=not available%n", core);/*checks the load is greate than 0 */
-            } else {
+            loads[core] = cpuInfo.calculateLoad(previousBusy[core], previousIdle[core], busy, idle);
+        }
+        return loads;
+    }
+
+    /** The average of the readable core loads as a percentage, or "not available". */
+    private static String averageLoadText(double[] loads)
+    {
+        double totalLoad = 0;
+        int readableCores = 0;
+        for (double load : loads) {
+            if (load >= 0) {
                 totalLoad += load;/*totals all the loads on each core */
                 readableCores++;
-                System.out.printf("core %d: load=%.1f%%%n", core, load * 100);/*Returns the load on each core */
             }
         }
-        System.out.printf("average load: %s%n", readableCores == 0
-                ? "not available"
-                : String.format("%.1f%%", totalLoad / readableCores * 100));/*Return the average load */
-
-        System.out.println();
-        System.out.println("Memory");
-        System.out.println();
-
-        System.out.println("memory: total=" + memInfo.getTotal() + " KiB, used=" + memInfo.getUsed() + " KiB");
-
-        System.out.println();
-        System.out.println("PCI");
-        System.out.println();
-
-        idLookup pci = idLookup.pci();
-        System.out.println("PCI devices: " + pciInfo.getCount());
-        for (int i = 0; i < pciInfo.getCount(); i++) {
-            int vendor = pciInfo.getVendorId(i);
-            int device = pciInfo.getDeviceId(i);
-            System.out.printf("  %s  %04x:%04x  %s %s%n", pciInfo.getAddress(i), vendor, device,
-                              pci.vendorName(vendor), pci.deviceName(vendor, device));
-        }
-
-        System.out.println();
-        System.out.println("USB");
-        System.out.println();
-
-        idLookup usb = idLookup.usb();
-        System.out.println("USB devices: " + usbInfo.getCount());
-        for (int i = 0; i < usbInfo.getCount(); i++) {
-            int vendor = usbInfo.getVendorId(i);
-            int product = usbInfo.getProductId(i);
-            System.out.printf("  Bus %03d Device %03d: ID %04x:%04x  %s %s%n", usbInfo.getBusNumber(i),
-                              usbInfo.getDeviceNumber(i), vendor, product,
-                              usb.vendorName(vendor), usb.deviceName(vendor, product));
-        }
-        System.out.println();
-        System.out.println("Summary");
-        System.out.println();
-        String averageLoad = readableCores == 0
-            ? "not available"
-            : String.format("%.1f%%", totalLoad / readableCores * 100);
-        System.out.printf("This computer has a %s CPU with %d cores, an average load of %s, "
-                          + "%d KiB of memory used out of %d KiB, and %d PCI and %d USB devices.%n", /*Formatted summary */
-                          model, cores, averageLoad, memInfo.getUsed(), memInfo.getTotal(),
-                          pciInfo.getCount(), usbInfo.getCount());
-
-
+        if (readableCores == 0)
+            return "not available";
+        return String.format("%.1f%%", totalLoad / readableCores * 100);/*Return the average load */
     }
 }
