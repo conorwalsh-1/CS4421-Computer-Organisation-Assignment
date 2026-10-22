@@ -14,7 +14,22 @@ public class demo
     private static final String RED = "\u001B[31m";
     private static final String GREEN = "\u001B[32m";
     private static final String CYAN = "\u001B[36m";
+    private static final String YELLOW = "\u001B[33m";
+    private static final String BLUE = "\u001B[34m";
     private static final String PURPLE = "\u001B[35m";
+    private static final String BOLD = "\u001B[1m";
+    private static final String DIM = "\u001B[2m";
+
+    private static final String[] TITLE = {
+            "██╗  ██╗ █████╗ ██████╗ ██████╗ ██╗    ██╗ █████╗ ██████╗ ███████╗",
+            "██║  ██║██╔══██╗██╔══██╗██╔══██╗██║    ██║██╔══██╗██╔══██╗██╔════╝",
+            "███████║███████║██████╔╝██║  ██║██║ █╗ ██║███████║██████╔╝█████╗",
+            "██╔══██║██╔══██║██╔══██╗██║  ██║██║███╗██║██╔══██║██╔══██╗██╔══╝",
+            "██║  ██║██║  ██║██║  ██║██████╔╝╚███╔███╔╝██║  ██║██║  ██║███████╗",
+            "╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝  ╚══╝╚══╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝"
+    };
+    private static final String[] TITLE_COLOURS = {CYAN, CYAN, BLUE, BLUE, PURPLE, PURPLE};
+    private static final int MENU_WIDTH = 66;
 
     public static void main(String[] args)
     {
@@ -63,27 +78,67 @@ public class demo
         }
     }
 
-    /** Prints the title at the top of the menu. */
+    /** Prints the title at the top of the menu, with each row of letters in a different colour. */
     private static void printBanner()
     {
-        System.out.println(RED);
-        System.out.println("╔══════════════════════════════════════╗");
-        System.out.println("║      CS4421  HARDWARE  INSPECTOR     ║");
-        System.out.println("╚══════════════════════════════════════╝" + RESET);
+        System.out.println();
+        for (int row = 0; row < TITLE.length; row++)
+            System.out.println("  " + TITLE_COLOURS[row] + TITLE[row] + RESET);
+
+        String subtitle = " CS4421 Computer Organisation · System Inspector ";
+        int left = (MENU_WIDTH - subtitle.length()) / 2;
+        int right = MENU_WIDTH - left - subtitle.length();
+        System.out.println("  " + DIM + textChart.repeat('─', left) + RESET + BOLD + subtitle + RESET
+                + DIM + textChart.repeat('─', right) + RESET);
+        System.out.println();
     }
 
-    /** Prints the list of options. */
+    /** Prints a status line with a memory bar and the number of cores, PCI and USB devices. */
+    private static void printStatus()
+    {
+        double memory = memReport.getPercentUsed();
+        String memoryText = "unavailable";
+        if (memory >= 0)
+            memoryText = textChart.percentBar(memory, 20);
+
+        System.out.println("  " + BOLD + "Memory " + RESET + memoryText
+                + "   " + BOLD + "Cores " + RESET + cpuInfo.getCount()
+                + "   " + BOLD + "PCI " + RESET + pciInfo.getCount()
+                + "   " + BOLD + "USB " + RESET + usbInfo.getCount());
+        System.out.println();
+    }
+
+    /** Prints the list of options in a box. */
     private static void printMenu()
     {
-        System.out.println(PURPLE);
-        System.out.println("  1. CPU");
-        System.out.println("  2. Memory");
-        System.out.println("  3. PCI");
-        System.out.println("  4. USB");
-        System.out.println("  5. Summary");
-        System.out.println("  0. Exit" + RESET);
+        printStatus();
+
+        int inner = MENU_WIDTH - 2;
+        System.out.println("  " + PURPLE + "┌" + textChart.repeat('─', inner) + "┐" + RESET);
+        menuLine(inner, "1", "CPU", "model, caches, load on each core");
+        menuLine(inner, "2", "Memory", "usage, breakdown and swap");
+        menuLine(inner, "3", "PCI", "devices, vendors and classes");
+        menuLine(inner, "4", "USB", "connected devices");
+        menuLine(inner, "5", "Summary", "the whole machine in one line");
+        System.out.println("  " + PURPLE + "├" + textChart.repeat('─', inner) + "┤" + RESET);
+        menuLine(inner, "0", "Exit", "");
+        System.out.println("  " + PURPLE + "└" + textChart.repeat('─', inner) + "┘" + RESET);
         System.out.println();
-        System.out.print("Pick an option: ");
+        System.out.print("  " + BOLD + "Pick an option: " + RESET);
+    }
+
+    /** One row of the menu box: the key to press, the option's name and what it shows. */
+    private static void menuLine(int inner, String key, String name, String description)
+    {
+        // the same row without colours, so the padding to the right-hand border can be worked out
+        String plain = "  [" + key + "]  " + String.format("%-9s", name) + " " + description;
+        String padding = textChart.repeat(' ', inner - plain.length());
+
+        System.out.println("  " + PURPLE + "│" + RESET
+                + "  " + YELLOW + BOLD + "[" + key + "]" + RESET
+                + "  " + BOLD + String.format("%-9s", name) + RESET
+                + " " + DIM + description + RESET
+                + padding + PURPLE + "│" + RESET);
     }
 
     /** Clears the console. */
