@@ -140,26 +140,35 @@ public class memReport {
 
     /**
      * A graph of memory use over time, one column per reading, oldest on the left.
-     * Each row is 10%, so a column reaching the 30% row means about 30% in use.
+     * Each row's label is the value at the middle of that row, and each row is split
+     * into a lower and upper half, so a bar's top lines up with its label to within 5%.
      */
     private static void printGraph(double[] history, int count) {
         System.out.println("  Memory use over time (one reading every " + (SAMPLE_GAP_MS / 1000.0) + " s)");
         System.out.println();
 
-        for (int row = GRAPH_ROWS; row >= 1; row--) {
-            int level = row * 100 / GRAPH_ROWS;
-            String line = String.format("  %3d%% │", level);
+        int percentPerRow = 100 / GRAPH_ROWS;
+        for (int row = GRAPH_ROWS; row >= 0; row--) {
+            String line = String.format("  %3d%% │", row * percentPerRow);
             for (int i = 0; i < count; i++) {
-                int height = (int) Math.round(history[i] / (100.0 / GRAPH_ROWS));
-                if (height >= row) {
+                // the bar's height in halves of a row, measured from the 0% line
+                int halves = (int) Math.round(history[i] / (percentPerRow / 2.0));
+                boolean lower = row > 0 && halves >= row * 2;
+                boolean upper = halves >= row * 2 + 1;
+
+                if (lower && upper) {
                     line = line + colourFor(history[i]) + "██" + RESET;
+                } else if (lower) {
+                    line = line + colourFor(history[i]) + "▄▄" + RESET;
+                } else if (upper) {
+                    line = line + colourFor(history[i]) + "▀▀" + RESET;
                 } else {
                     line = line + "  ";
                 }
             }
             System.out.println(line);
         }
-        System.out.println("    0% └" + repeat('─', SAMPLES * 2));
+        System.out.println("       └" + repeat('─', SAMPLES * 2));
         System.out.println("        oldest" + repeat(' ', SAMPLES * 2 - 12) + "newest");
     }
 
