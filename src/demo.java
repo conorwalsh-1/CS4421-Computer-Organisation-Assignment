@@ -285,9 +285,14 @@ public class demo
 
         System.out.println();
         System.out.println("  " + DIM + textChart.repeat('─', MENU_WIDTH) + RESET);
-        String sentence = String.format("This computer has a %s CPU with %d cores, an average load of %s, "
+        String model = cpuReport.getModel();
+        String article = "a";
+        if (!model.isEmpty() && "AEIOUaeiou".indexOf(model.charAt(0)) >= 0)
+            article = "an";/*"an Intel" but "a Ryzen" */
+
+        String sentence = String.format("This computer has %s %s CPU with %d cores, an average load of %s, "
                           + "%s of memory used out of %s, and %d PCI and %d USB devices.", /*Formatted summary */
-                          cpuReport.getModel(), loads.length, averageLoadText(loads),
+                          article, model, loads.length, averageLoadText(loads),
                           memReport.formatKiB(memInfo.getUsed()), memReport.formatKiB(memInfo.getTotal()),
                           pciDevices.size(), usbDevices.size());
         printWrapped(sentence, MENU_WIDTH);
