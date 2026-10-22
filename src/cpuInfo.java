@@ -12,6 +12,29 @@ public class cpuInfo
 {
     private static final Path CPUINFO = sysFile.path("/proc/cpuinfo");  /*pulls the Cpu info from the linux processes folder*/
     private static final Path STAT = sysFile.path("/proc/stat"); /* pulls the stat file which contains kernel activities */
+    private static final Path CACHE = sysFile.path("/sys/devices/system/cpu/cpu0/cache");/*pulls cache info*/
+
+    /** Cache details read from one of cpu0's cache/indexN directories. */
+    public static final class CacheInfo
+    {
+        private final String level;
+        private final String type;
+        private final String size;
+        private final String coherencyLineSize;
+
+        private CacheInfo(String level, String type, String size, String coherencyLineSize)/*Constructor for the cache object */
+        {
+            this.level = level;
+            this.type = type;
+            this.size = size;
+            this.coherencyLineSize = coherencyLineSize;
+        }
+
+        public String getLevel() { return level; }
+        public String getType() { return type; }
+        public String getSize() { return size; }
+        public String getCoherencyLineSize() { return coherencyLineSize; }/*Return methods */
+    }
 
     /** Number of cores (logical processors) the operating system sees. */
     public static int getCount()
@@ -43,6 +66,23 @@ public class cpuInfo
                 return line.substring(colon + 1).strip();/*If so it returns the string to the right of the colon*/
         }
         return "";
+    }
+
+    /** Cache details for cpu0 cache indexN, or null if that cache does not exist. */
+    public static CacheInfo getCacheInfo(int index)
+    {
+        if (index < 0)
+            return null;/*Checks that cache info is present */
+
+        Path cache = CACHE.resolve("index" + index); /*stores the path plus the index subdir */
+        if (!java.nio.file.Files.isDirectory(cache))
+            return null; /*Checks the path exists */
+
+        return new CacheInfo(
+                sysFile.text(cache.resolve("level")), /*Opens the files and stores as text */
+                sysFile.text(cache.resolve("type")),
+                sysFile.text(cache.resolve("size")),
+                sysFile.text(cache.resolve("coherency_line_size")));
     }
 
     /** Ticks since boot that core number 'core' (0, 1, 2 ...) has spent doing work. */
