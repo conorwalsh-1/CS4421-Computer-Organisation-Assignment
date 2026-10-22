@@ -21,41 +21,42 @@ import java.util.Map;
  */
 public class idLookup
 {
-    private final Map<Integer, String> vendors = new HashMap<>();
-    private final Map<Long, String> devices = new HashMap<>();
+    private final Map<Integer, String> vendors = new HashMap<>(); //maps vendor IDs to vendor names
+    private final Map<Long, String> devices = new HashMap<>(); //maps combined vendor and device IDs to device names. Combined as different vendors can share a device ID
     private final Map<Integer, String> classes = new HashMap<>();   // pci.ids only
 
-    /** Read a pci.ids or usb.ids file. Throws IOException if it cannot be read. */
+    /** Reads all lines from a pci.ids or usb.ids file. Throws IOException if it cannot be read. */
     public idLookup(Path file) throws IOException
     {
-        List<String> lines = Files.readAllLines(file);
-        int vendor = -1;
-        int baseClass = -1;
-        boolean inClasses = false;
+        List<String> lines = Files.readAllLines(file); //Reads all lines from file, splits them into lines to return them as strings
+        int vendor = -1;    
+        int baseClass = -1; //-- init both -1 as none is actively being read
+        boolean inClasses = false; //true if in the class section of pci.ids
 
         for (String line : lines) {
-            if (line.isEmpty() || line.startsWith("#"))
+            if (line.isEmpty() || line.startsWith("#")) //skip empty lines and comments
                 continue;
 
-            if (line.startsWith("C ")) {                       // start of the class section
+            if (line.startsWith("C ")) {                       // --start of class section
+                // a class line such as "C 06  Bridge"
                 inClasses = true;
-                baseClass = Integer.parseInt(line.substring(2, 4), 16);
-                classes.put(baseClass << 8, line.substring(6).strip());
+                baseClass = Integer.parseInt(line.substring(2, 4), 16); //takes the hex number after C and converts it to decimal and stores it in baseClass
+                classes.put(baseClass << 8, line.substring(6).strip()); //shifts baseClass 8 bits left to free the lower bits for the subclass so they can be stored in same map and takes class name to store in classes map
             } else if (inClasses && line.startsWith("\t") && !line.startsWith("\t\t")) {
                 // a sub class line such as "\t00  Host bridge"
-                if (baseClass >= 0 && line.length() > 5 && isHex(line, 1, 3))
+                if (baseClass >= 0 && line.length() > 5 && isHex(line, 1, 3)) //checks if line fits format of subclass line and has a valid baseClass
                     classes.put((baseClass << 8) | Integer.parseInt(line.substring(1, 3), 16),
                                 line.substring(5).strip());
             } else if (inClasses) {
-                if (Character.isUpperCase(line.charAt(0)) && !line.startsWith("C "))
-                    baseClass = -1;                             // some other section
-            } else if (isHex(line, 0, 4) && line.length() > 6) {
-                vendor = Integer.parseInt(line.substring(0, 4), 16);
-                vendors.put(vendor, line.substring(6).strip());
+                if (Character.isUpperCase(line.charAt(0)) && !line.startsWith("C ")) // end of class section
+                    baseClass = -1;                             // keep inClasses true to not falsely parse other sections as vendors or devices
+            } else if (isHex(line, 0, 4) && line.length() > 6) { //-- vendor line with 4 hex digits before a name e.g. "8086  Intel Corporation"
+                vendor = Integer.parseInt(line.substring(0, 4), 16); //converts first 4 characters of line to decimal and stores it in vendor
+                vendors.put(vendor, line.substring(6).strip()); //stores vendor name with vendor ID in vendors map
             } else if (line.startsWith("\t") && !line.startsWith("\t\t")
                        && vendor >= 0 && isHex(line, 1, 5) && line.length() > 7) {
-                int device = Integer.parseInt(line.substring(1, 5), 16);
-                devices.put(key(vendor, device), line.substring(7).strip());
+                int device = Integer.parseInt(line.substring(1, 5), 16); //device ID = 4 hex digits after \t as decimal
+                devices.put(key(vendor, device), line.substring(7).strip()); //stores device name with combined ID in devices map
             }
         }
     }
@@ -73,6 +74,7 @@ public class idLookup
                     "/var/lib/usbutils/usb.ids");
     }
 
+    /** Searches for specified id files in listed system paths */
     private static idLookup find(String name, String... systemPaths) throws IOException
     {
         Path local = Path.of("ids", name);
@@ -112,11 +114,14 @@ public class idLookup
         return vendors.size();
     }
 
+    /** Takes the 16-bit vendor and device IDs and combines. High 16 bits are vendor, low 16 bits are device. */
     private static long key(int vendor, int device)
     {
         return ((long) vendor << 16) | device;
     }
 
+
+    /** Check if a given string is hex value matching IDs used in files */
     private static boolean isHex(String s, int from, int to)
     {
         if (s.length() < to)
