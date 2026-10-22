@@ -6,7 +6,7 @@ import java.util.Scanner;
  * section that the user picks, until they choose to exit.
  *
  * Build:  javac -d out src/*.java
- * Run:    java -cp out demo        (run it from the folder that contains the ids folder)
+ * Run:    java -cp out demo
  */
 public class demo
 {
@@ -172,6 +172,7 @@ public class demo
         int cores = cpuInfo.getCount(); /*gets the no. of cores */
         long[] previousBusy = new long[cores];/*makes a list to store the busy and idle times of each core */
         long[] previousIdle = new long[cores];
+
         for (int core = 0; core < cores; core++) {
             previousBusy[core] = cpuInfo.getBusy(core);/* fills the list with each cores busy and idle times */
             previousIdle[core] = cpuInfo.getIdle(core);
@@ -192,22 +193,34 @@ public class demo
         return loads;
     }
 
-    /** The average of the readable core loads as a percentage, or "not available". */
-    private static String averageLoadText(double[] loads)
+    //work out the average of the valid cpu readings
+    //returns -1 if there aren't any valid readings
+    private static double averageLoad(double[] loads)
     {
         double totalLoad = 0;
         int readableCores = 0;
 
         for (double load : loads) {
-            if (load >= 0) {
+            if (load >= 0 && load <= 1 && !Double.isNaN(load)) {
                 totalLoad += load;
                 readableCores++;
             }
         }
 
         if (readableCores == 0)
+            return -1;
+
+        return totalLoad / readableCores;
+    }
+
+    /** The average of the readable core loads as a percentage, or "not available". */
+    private static String averageLoadText(double[] loads)
+    {
+        double average = averageLoad(loads);
+
+        if (average < 0)
             return "not available";
 
-        return String.format("%.1f%%", totalLoad / readableCores * 100);
+        return String.format("%.1f%%", average * 100);
     }
 }
