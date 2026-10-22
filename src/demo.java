@@ -240,9 +240,6 @@ public class demo
             System.out.println("  " + DIM + "(virtual machines and servers often have no USB at all)" + RESET);
             return;
         }
-        System.out.println("  " + DIM + devices.size() + " devices, numbered the same way as lsusb" + RESET);
-        System.out.println();
-
         // two lines per device: bus and device number, product and IDs, then the vendor
         for (UsbDevice usb : devices) {
             String where = "Bus " + String.format("%03d", usb.getBusNumber())
