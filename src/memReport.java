@@ -106,10 +106,10 @@ public class memReport {
 
         System.out.println("  Breakdown [" + textChart.RED + textChart.repeat('█', usedWidth)
                 + textChart.YELLOW + textChart.repeat('▓', cacheWidth)
-                + textChart.GREEN + textChart.repeat('░', freeWidth) + textChart.RESET + "]");
+                + textChart.RESET + textChart.repeat('░', freeWidth) + "]");
         System.out.println("            " + textChart.RED + "█" + textChart.RESET + " used " + formatKiB(used)
                 + "   " + textChart.YELLOW + "▓" + textChart.RESET + " cache " + formatKiB(cache)
-                + "   " + textChart.GREEN + "░" + textChart.RESET + " free " + formatKiB(free));
+                + "   ░ free " + formatKiB(free));
     }
 
     /** A bar for swap space, or a note if the machine has none. */

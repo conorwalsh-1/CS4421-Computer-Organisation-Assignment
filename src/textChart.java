@@ -11,19 +11,24 @@ public class textChart {
 
     private static final int GRAPH_ROWS = 10;
 
-    /** A bar of 'width' characters, filled in proportion to 'percent'. */
-    public static String bar(double percent, int width) {
+    /** How many of 'width' characters should be filled for 'percent', from 0 to width. */
+    public static int filledWidth(double percent, int width) {
         int filled = (int) Math.round(percent / 100 * width);
         if (filled > width)
             filled = width;
         if (filled < 0)
             filled = 0;
-        return repeat('█', filled) + repeat('░', width - filled);
+        return filled;
     }
 
-    /** A coloured bar in brackets followed by the percentage. */
+    /**
+     * A bar in brackets followed by the percentage. Only the filled part is coloured;
+     * the empty part is left in the normal text colour so it doesn't look filled.
+     */
     public static String percentBar(double percent, int width) {
-        return "[" + colourFor(percent) + bar(percent, width) + RESET + "] " + String.format("%.1f%%", percent);
+        int filled = filledWidth(percent, width);
+        return "[" + colourFor(percent) + repeat('█', filled) + RESET + repeat('░', width - filled) + "] "
+                + String.format("%.1f%%", percent);
     }
 
     /** Green under 60%, yellow under 85%, red otherwise. */
