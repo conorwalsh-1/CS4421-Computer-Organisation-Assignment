@@ -6,7 +6,7 @@ import java.util.Scanner;
  * section that the user picks, until they choose to exit.
  *
  * Build:  javac -d out src/*.java
- * Run:    java -cp out demo        (run it from the folder that contains the ids folder)
+ * Run:    java -cp out demo
  */
 public class demo
 {
@@ -118,20 +118,55 @@ public class demo
 
         System.out.println("cores:  " + loads.length);
         System.out.println("model:  " + model);
+
+        //print the load and bar for each core
         for (int core = 0; core < loads.length; core++) {
-            if (loads[core] < 0) {
-                System.out.printf("core %d: load=not available%n", core);/*checks the load is greater than 0 */
+            if (loads[core] < 0 || loads[core] > 1 || Double.isNaN(loads[core])) {
+                System.out.printf("core %d: load=not available%n", core);
             } else {
-                System.out.printf("core %d: load=%.1f%%%n", core, loads[core] * 100);/*Returns the load on each core */
+                double percent = loads[core] * 100;
+
+                System.out.printf("core %d: [%s] %.1f%%%n",
+                        core, BarGraph.makeBar(percent), percent);
             }
         }
-        System.out.println("average load: " + averageLoadText(loads));
+
+        //get the average load and display another bar
+        double average = averageLoad(loads);
+
+        if (average < 0) {
+            System.out.println("average load: not available");
+        } else {
+            double percent = average * 100;
+
+            System.out.printf("average load: [%s] %.1f%%%n",
+                    BarGraph.makeBar(percent), percent);
+        }
     }
 
     /** Displays total, used and available memory and the percentage in use. */
     private static void memoryMenu()
     {
         memReport.printWithHistory();
+
+        long total = memInfo.getTotal();
+        long available = memInfo.getAvailable();
+
+        //check that the memory values are valid
+        if (total > 0 && available >= 0 && available <= total) {
+            long used = total - available;
+
+            //work out the percentage used and available
+            double usedPercent = (double) used / total * 100;
+            double availablePercent = (double) available / total * 100;
+
+            System.out.println();
+            System.out.printf("RAM: [%s] %.1f%% used, %.1f%% available%n",
+                    BarGraph.makeBar(usedPercent),
+                    usedPercent, availablePercent);
+        } else {
+            System.out.println("Memory bar not available");
+        }
     }
 
     /** Displays every PCI device in address order, then the counts by vendor and by class. */
@@ -187,7 +222,7 @@ public class demo
             String implementer = cpuInfo.getField("CPU implementer");/*I get the implementer instead */
             String part = cpuInfo.getField("CPU part");/*And the model */
             model = !implementer.isEmpty() || !part.isEmpty()/*Model = the Cpu implementer and the part number only if theres no implementer */
-                    ? "ARM implementer=" + (implementer.isEmpty() ? "not available" : implementer)/*Says not available if the implementer var is empty  */
+                    ? "ARM implementer=" + (implementer.isEmpty() ? "not available" : implementer)
                       + ", part=" + (part.isEmpty() ? "not available" : part)
                     : "not available";
         }
@@ -200,6 +235,7 @@ public class demo
         int cores = cpuInfo.getCount(); /*gets the no. of cores */
         long[] previousBusy = new long[cores];/*makes a list to store the busy and idle times of each core */
         long[] previousIdle = new long[cores];
+
         for (int core = 0; core < cores; core++) {
             previousBusy[core] = cpuInfo.getBusy(core);/* fills the list with each cores busy and idle times */
             previousIdle[core] = cpuInfo.getIdle(core);
@@ -220,22 +256,34 @@ public class demo
         return loads;
     }
 
-    /** The average of the readable core loads as a percentage, or "not available". */
-    private static String averageLoadText(double[] loads)
+    //work out the average of the valid cpu readings
+    //returns -1 if there aren't any valid readings
+    private static double averageLoad(double[] loads)
     {
         double totalLoad = 0;
         int readableCores = 0;
 
         for (double load : loads) {
-            if (load >= 0) {
+            if (load >= 0 && load <= 1 && !Double.isNaN(load)) {
                 totalLoad += load;
                 readableCores++;
             }
         }
 
         if (readableCores == 0)
+            return -1;
+
+        return totalLoad / readableCores;
+    }
+
+    /** The average of the readable core loads as a percentage, or "not available". */
+    private static String averageLoadText(double[] loads)
+    {
+        double average = averageLoad(loads);
+
+        if (average < 0)
             return "not available";
 
-        return String.format("%.1f%%", totalLoad / readableCores * 100);
+        return String.format("%.1f%%", average * 100);
     }
 }
