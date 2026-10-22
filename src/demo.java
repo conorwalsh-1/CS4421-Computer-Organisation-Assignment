@@ -131,7 +131,7 @@ public class demo
     /** Displays total, used and available memory and the percentage in use. */
     private static void memoryMenu()
     {
-        memReport.print();
+        memReport.printWithHistory();
     }
 
     /** Displays every PCI device in address order, then the counts by vendor and by class. */
