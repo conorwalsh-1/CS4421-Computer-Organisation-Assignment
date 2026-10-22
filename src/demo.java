@@ -160,8 +160,33 @@ public class demo
     /** Prints a section heading. */
     private static void heading(String title)
     {
-        System.out.println(GREEN + title + RESET);
         System.out.println();
+        System.out.println("  " + BOLD + GREEN + title + RESET + " "
+                + DIM + textChart.repeat('─', MENU_WIDTH - title.length() - 1) + RESET);
+        System.out.println();
+    }
+
+    /** Prints a smaller heading inside a section. */
+    private static void subheading(String title)
+    {
+        System.out.println();
+        System.out.println("  " + BOLD + CYAN + title + RESET);
+    }
+
+    /** A 16-bit ID as 4 hex digits, or "????" if it could not be read. */
+    private static String hex4(int id)
+    {
+        if (id < 0)
+            return "????";
+        return String.format("%04x", id);
+    }
+
+    /** The name, or 'fallback' if the name is null. */
+    private static String nameOr(String name, String fallback)
+    {
+        if (name == null)
+            return fallback;
+        return name;
     }
 
     /** Displays the CPU model, caches, a load bar for each core and a graph of the average load. */
@@ -179,34 +204,55 @@ public class demo
     /** Displays every PCI device in address order, then the counts by vendor and by class. */
     private static void pciMenu()
     {
-        heading("PCI");
+        heading("PCI devices");
         List<PciDevice> devices = PciAnalysis.sortByAddress(PciDevice.readAll());
-        System.out.println("PCI devices: " + devices.size());
-        for (PciDevice d : devices)
-            System.out.println("  " + d.describe());
-
+        if (devices.isEmpty()) {
+            System.out.println("  No PCI devices found");
+            return;
+        }
+        System.out.println("  " + DIM + devices.size() + " devices, in address order" + RESET);
         System.out.println();
-        System.out.println("Devices by vendor:");
+
+        // two lines per device: address, class and IDs, then the vendor and device names
+        for (PciDevice d : devices) {
+            String indent = textChart.repeat(' ', d.getAddress().length());
+            System.out.println("  " + YELLOW + d.getAddress() + RESET
+                    + "  " + BOLD + nameOr(d.getClassName(), "Unknown class") + RESET
+                    + "  " + DIM + "[" + hex4(d.getVendorId()) + ":" + hex4(d.getDeviceId()) + "]" + RESET);
+            System.out.println("  " + indent + "  " + nameOr(d.getVendorName(), "Unknown vendor")
+                    + DIM + " · " + RESET + nameOr(d.getDeviceName(), "Unknown device"));
+        }
+
+        subheading("Devices by vendor");
         PciAnalysis.printCountByVendor(devices);
 
-        System.out.println();
-        System.out.println("Devices by class:");
+        subheading("Devices by class");
         PciAnalysis.printCountByClass(devices);
     }
 
     /** Displays every USB device with its bus, device number, IDs and names. */
     private static void usbMenu()
     {
-        heading("USB");
+        heading("USB devices");
         List<UsbDevice> devices = UsbInspector.readDevices();
-        System.out.println("USB devices: " + devices.size());
         if (devices.isEmpty()) {
-            System.out.println("No USB devices found");
+            System.out.println("  No USB devices found");
+            System.out.println("  " + DIM + "(virtual machines and servers often have no USB at all)" + RESET);
             return;
         }
+        System.out.println("  " + DIM + devices.size() + " devices, numbered the same way as lsusb" + RESET);
+        System.out.println();
 
-        for (UsbDevice usb : devices)
-            System.out.println("  " + usb.describe());
+        // two lines per device: bus and device number, product and IDs, then the vendor
+        for (UsbDevice usb : devices) {
+            String where = "Bus " + String.format("%03d", usb.getBusNumber())
+                    + " Device " + String.format("%03d", usb.getDeviceNumber());
+            String indent = textChart.repeat(' ', where.length());
+            System.out.println("  " + YELLOW + where + RESET
+                    + "  " + BOLD + nameOr(usb.getProductName(), "Unknown product") + RESET
+                    + "  " + DIM + "[" + hex4(usb.getVendorId()) + ":" + hex4(usb.getProductId()) + "]" + RESET);
+            System.out.println("  " + indent + "  " + nameOr(usb.getVendorName(), "Unknown vendor"));
+        }
     }
 
     /** Displays a one-paragraph summary of the whole machine. */

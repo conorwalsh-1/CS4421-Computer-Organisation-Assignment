@@ -69,9 +69,7 @@ public class PciAnalysis {
             }
         }
 
-        for (int i = 0; i < used; i++) {
-            System.out.println(names[i] + ": " + counts[i]);
-        }
+        printCounts(names, counts, used);
     }
 
     /** Prints how many devices there are of each class, for example "Audio device: 2". */
@@ -99,8 +97,44 @@ public class PciAnalysis {
             }
         }
 
+        printCounts(names, counts, used);
+    }
+
+    /**
+     * Prints the first 'used' names with a bar for each count and then the count.
+     * The biggest count gets the longest bar and the others are scaled to match.
+     */
+    private static void printCounts(String[] names, int[] counts, int used) {
+        final int maxBar = 30;
+        final int maxName = 34;
+
+        int most = 0;
+        int nameWidth = 0;
         for (int i = 0; i < used; i++) {
-            System.out.println(names[i] + ": " + counts[i]);
+            if (counts[i] > most) {
+                most = counts[i];
+            }
+            if (names[i].length() > nameWidth) {
+                nameWidth = names[i].length();
+            }
+        }
+        if (nameWidth > maxName) {
+            nameWidth = maxName;
+        }
+
+        for (int i = 0; i < used; i++) {
+            String name = names[i];
+            if (name.length() > nameWidth) {
+                name = name.substring(0, nameWidth - 3) + "...";
+            }
+
+            int length = counts[i] * maxBar / most;
+            if (length == 0) {
+                length = 1;
+            }
+
+            System.out.println("  " + name + textChart.repeat(' ', nameWidth - name.length()) + "  "
+                    + textChart.CYAN + textChart.repeat('█', length) + textChart.RESET + " " + counts[i]);
         }
     }
 
