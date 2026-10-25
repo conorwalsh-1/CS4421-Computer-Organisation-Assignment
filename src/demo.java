@@ -71,6 +71,9 @@ public class demo
                 case 6:
                     memExplorer.run();
                     break;
+                case 7:
+                    parallelTest.run();
+                    break;
                 case 0:
                     System.out.println("Goodbye.");
                     return;
@@ -124,6 +127,7 @@ public class demo
         menuLine(inner, "4", "USB", "connected devices");
         menuLine(inner, "5", "Summary", "the whole machine on one screen");
         menuLine(inner, "6", "Explorer", "cache timing tests (about a minute)");
+        menuLine(inner, "7", "Parallel", "CPU-heavy task on 1, 2, 4 ... threads");
         System.out.println("  " + PURPLE + "├" + textChart.repeat('─', inner) + "┤" + RESET);
         menuLine(inner, "0", "Exit", "");
         System.out.println("  " + PURPLE + "└" + textChart.repeat('─', inner) + "┘" + RESET);
