@@ -1,3 +1,9 @@
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Locale;
 import java.util.Random;
 
 /**
@@ -27,19 +33,30 @@ public class memExplorer {
     /** The stride test uses 7 strides: 1, 2, 4 ... 64 ints. */
     private static final int NUM_STRIDES = 7;
 
-    /** How many reads each working-set measurement does, whatever the array size. */
+    /**
+     * How many reads each working-set measurement does, whatever the array size.
+     */
     private static final long TOTAL_ACCESSES = 16L * MiB;
 
-    /** Used to shuffle the read order. The fixed seed gives the same order every run. */
+    /**
+     * Used to shuffle the read order. The fixed seed gives the same order every
+     * run.
+     */
     private static final Random random = new Random(4421);
 
     /** Each test is run this many times and the fastest time is kept. */
     private static final int REPEATS = 5;
 
-    /** A working-set time this many times bigger than the size before it counts as a jump. */
+    /**
+     * A working-set time this many times bigger than the size before it counts as a
+     * jump.
+     */
     private static final double LEVEL_JUMP = 1.2;
 
-    /** A stride time this many times bigger than the stride before it counts as still rising. */
+    /**
+     * A stride time this many times bigger than the stride before it counts as
+     * still rising.
+     */
     private static final double STRIDE_JUMP = 1.3;
 
     /** The results are added here so Java can't skip the loops as unused work. */
@@ -54,11 +71,13 @@ public class memExplorer {
      */
     public static void run() {
         title();
-        System.out.println("  " + textChart.DIM + "This takes about a minute. Close other programs for steadier results."
-                + textChart.RESET);
+        System.out
+                .println("  " + textChart.DIM + "This takes about a minute. Close other programs for steadier results."
+                        + textChart.RESET);
         System.out.println();
 
-        // the first runs are slower while Java compiles the loops, so do a few runs first and ignore them
+        // the first runs are slower while Java compiles the loops, so do a few runs
+        // first and ignore them
         System.out.println("  Warming up...");
         int[] warmUp = makeArray(MiB);
         for (int i = 0; i < 3; i++) {
@@ -74,7 +93,8 @@ public class memExplorer {
 
         int bytes = 4 * KiB;
         for (int i = 0; i < NUM_SIZES; i++) {
-            System.out.printf("  Working-set test  %2d of %d   %-10s", i + 1, NUM_SIZES, memReport.formatKiB(bytes / KiB));
+            System.out.printf("  Working-set test  %2d of %d   %-10s", i + 1, NUM_SIZES,
+                    memReport.formatKiB(bytes / KiB));
             int[] array = makeArray(bytes / 4); // an int is 4 bytes
             sizes[i] = bytes;
             sizeTimes[i] = timeWorkingSet(array);
@@ -104,6 +124,9 @@ public class memExplorer {
         System.out.println();
         System.out.println("  Reported by Linux: " + cpuReport.cacheSummary());
         System.out.println("  " + textChart.DIM + "(cache line size: " + cacheLineSize() + ")" + textChart.RESET);
+
+        // CSV Export
+        writeCsv(sizes, sizeTimes, strides, strideTimes);
     }
 
     /** The title at the top of the screen. */
@@ -140,7 +163,8 @@ public class memExplorer {
         }
 
         for (int i = 0; i < sizes.length; i++) {
-            // how far this time is from the fastest to the slowest, from 0 to 1, on a log scale
+            // how far this time is from the fastest to the slowest, from 0 to 1, on a log
+            // scale
             double position = 1;
             if (slowest > fastest)
                 position = Math.log(times[i] / fastest) / Math.log(slowest / fastest);
@@ -174,7 +198,10 @@ public class memExplorer {
         }
     }
 
-    /** The coherency line size of cpu0's first cache in bytes, as Linux reports it, or "not available". */
+    /**
+     * The coherency line size of cpu0's first cache in bytes, as Linux reports it,
+     * or "not available".
+     */
     private static String cacheLineSize() {
         cpuInfo.CacheInfo cache = cpuInfo.getCacheInfo(0);
         if (cache == null || cache.getCoherencyLineSize().isEmpty())
@@ -183,11 +210,13 @@ public class memExplorer {
     }
 
     /**
-     * Reads the array TOTAL_ACCESSES times and returns the time per read in nanoseconds.
+     * Reads the array TOTAL_ACCESSES times and returns the time per read in
+     * nanoseconds.
      *
      * Each element holds the index of the next element to read (see makeArray), so
      * every read has to finish before the CPU knows where the next one is. That way
-     * the time is how long one read really takes from wherever the array is: L1, L2,
+     * the time is how long one read really takes from wherever the array is: L1,
+     * L2,
      * L3 or RAM. If the reads didn't depend on each other the CPU could do lots of
      * them at once, which hides the difference between the levels.
      */
@@ -264,7 +293,8 @@ public class memExplorer {
     }
 
     /**
-     * Prints the estimated cache line size. While the stride is smaller than a line,
+     * Prints the estimated cache line size. While the stride is smaller than a
+     * line,
      * doubling it means a new line is loaded twice as often, so the time per read
      * keeps going up. Once the stride is a whole line or more, every read loads a
      * new line anyway and the time flattens out. The line size is the stride of the
@@ -310,12 +340,41 @@ public class memExplorer {
             order[j] = temp;
         }
 
-        // each index in the order points to the one after it, and the last one points back to the first
+        // each index in the order points to the one after it, and the last one points
+        // back to the first
         int[] array = new int[length];
         for (int i = 0; i < length - 1; i++) {
             array[order[i]] = order[i + 1];
         }
         array[order[length - 1]] = order[0];
         return array;
+    }
+
+    /** Writes size/stride vs time results to a CSV file */
+    private static void writeCsv(int[] sizes, double[] sizeTimes, int[] strides, double[] strideTimes) {
+        Path output = Path.of("mem_explorer_results.csv"); // sets path where csv will be written to where the file
+                                                           // currently exists
+        try (BufferedWriter csv = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) { // creates a writer to
+                                                                                             // write to the file
+            csv.write("test,array_size_bytes,stride_elements,stride_bytes,time_ns_per_read"); // creates headers
+            csv.newLine();
+
+            for (int i = 0; i < sizes.length; i++) { // loops through sizes and fills columns with sizes and sizeTimes
+                csv.write("working_set," + sizes[i] + ",,," + String.format(Locale.ROOT, "%.5f", sizeTimes[i]));
+                csv.newLine();
+            }
+
+            for (int i = 0; i < strides.length; i++) { // loops through strides and fills columns with the stride in
+                                                       // elements and in bytes and the time
+                int strideBytes = strides[i] * Integer.BYTES;
+                csv.write("stride," + (64 * MiB) + "," + strides[i] + "," + strideBytes + ","
+                        + String.format(Locale.ROOT, "%.7f", strideTimes[i]));
+                csv.newLine();
+            }
+            System.out.println("");
+            System.out.println("  Results written to CSV at " + output.toAbsolutePath());
+        } catch (IOException e) {
+            System.out.println("  Could not write CSV results: " + e.getMessage());
+        }
     }
 }
