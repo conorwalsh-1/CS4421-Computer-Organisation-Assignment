@@ -16,8 +16,6 @@ import java.util.Random;
  *
  * After both tests it estimates where each cache level ends and how big a cache
  * line is, from where the times jump.
- *
- * Started from the main menu (option 6). Best run on alderaan or a Linux VM.
  */
 public class memExplorer {
     private static final int KiB = 1024;

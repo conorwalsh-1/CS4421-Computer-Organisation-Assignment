@@ -4,9 +4,6 @@ import java.util.Scanner;
 /**
  * The main program. Shows a menu and prints the CPU, memory, PCI, USB or summary
  * section that the user picks, until they choose to exit.
- *
- * Build:  javac -d out src/*.java
- * Run:    java -cp out demo
  */
 public class demo
 {

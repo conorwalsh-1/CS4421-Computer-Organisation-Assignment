@@ -15,7 +15,10 @@
  * number of cores. Every run must find the same number of primes, which checks that
  * the work was split correctly.
  *
- * Started from the main menu (option 7). Best run on alderaan or a Linux VM.
+ * After the timings, the task is run again for each thread count while the load on
+ * every core is measured, from two readings of /proc/stat 1 second apart (the same
+ * calculation as the CPU screen). This shows the threads landing on different cores:
+ * with 1 thread about one core should be busy, with 4 threads about four.
  */
 public class parallelTest {
     /** Count the primes below this number. */
@@ -30,6 +33,12 @@ public class parallelTest {
     /** Longest bar in the speedup chart. */
     private static final int BAR_WIDTH = 30;
 
+    /** Characters from empty to full, used to show each core's load in one character. */
+    private static final char[] LEVELS = {' ', '▁', '▂', '▃', '▄', '▅', '▆', '▇', '█'};
+
+    /** A core with at least this much load (out of 1) counts as busy. */
+    private static final double BUSY = 0.5;
+
     /**
      * Runs the test for each thread count, showing progress while it runs, then
      * clears the screen and shows the times, speedups and a speedup chart.
@@ -37,7 +46,7 @@ public class parallelTest {
     public static void run() {
         int cores = cpuInfo.getCount();
         if (cores < 1) {
-            // no /proc/cpuinfo (not Linux), so ask Java how many processors it can use instead
+            // no /proc/cpuinfo, so ask Java how many processors it can use instead
             cores = Runtime.getRuntime().availableProcessors();
         }
         int[] threadCounts = threadCounts(cores);
@@ -73,9 +82,82 @@ public class parallelTest {
             System.out.printf("%7.3f s%n", seconds[i]);
         }
 
+        // per-core load needs /proc/stat, so only measure it when cpuInfo can read the cores
+        double[][] loads = null;
+        if (cpuInfo.getCount() > 0) {
+            System.out.println();
+            loads = new double[threadCounts.length][];
+            for (int i = 0; i < threadCounts.length; i++) {
+                System.out.printf("  Measuring per-core load with %2d threads...%n", threadCounts[i]);
+                loads[i] = watchLoad(threadCounts[i]);
+            }
+        }
+
         textChart.clearScreen();
         title();
         printResults(threadCounts, seconds, primes, cores);
+        printLoads(threadCounts, loads);
+    }
+
+    /**
+     * Keeps the prime task running on 'threads' threads in the background while the
+     * load on each core is measured over 1 second. Returns the load of each core
+     * from 0 to 1, or -1 for a core that couldn't be read.
+     */
+    private static double[] watchLoad(int threads) {
+        LoadRunner runner = new LoadRunner(threads);
+        runner.start();
+        textChart.pause(500); // give the threads time to start and spread out over the cores
+
+        int cores = cpuInfo.getCount();
+        long[] previousBusy = new long[cores];
+        long[] previousIdle = new long[cores];
+        for (int core = 0; core < cores; core++) {
+            previousBusy[core] = cpuInfo.getBusy(core);
+            previousIdle[core] = cpuInfo.getIdle(core);
+        }
+
+        textChart.pause(1000);
+
+        double[] loads = new double[cores];
+        for (int core = 0; core < cores; core++) {
+            loads[core] = cpuInfo.calculateLoad(previousBusy[core], previousIdle[core],
+                    cpuInfo.getBusy(core), cpuInfo.getIdle(core));
+        }
+
+        runner.finish();
+        try {
+            runner.join(); // wait for the run that is going to finish
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        return loads;
+    }
+
+    /**
+     * Runs the prime task over and over on 'threads' threads until finish() is called,
+     * so the cores stay busy for as long as the load is being measured.
+     */
+    private static class LoadRunner extends Thread {
+        private final int threads;
+
+        // volatile so this thread sees the change when the main thread calls finish()
+        private volatile boolean stop = false;
+
+        LoadRunner(int threads) {
+            this.threads = threads;
+        }
+
+        @Override
+        public void run() {
+            while (!stop) {
+                countPrimes(threads, LIMIT);
+            }
+        }
+
+        void finish() {
+            stop = true;
+        }
     }
 
     /**
@@ -207,6 +289,49 @@ public class parallelTest {
                     + textChart.RESET);
             for (int i = 0; i < threadCounts.length; i++)
                 System.out.printf("    %2d threads: %,d%n", threadCounts[i], primes[i]);
+        }
+    }
+
+    /**
+     * One row per thread count with every core's load as a bar character and a
+     * percentage, and how many cores were busy. Prints a note instead if the load
+     * couldn't be measured.
+     */
+    private static void printLoads(int[] threadCounts, double[][] loads) {
+        System.out.println();
+        subheading("Per-core load while the task runs");
+        if (loads == null) {
+            System.out.println("  not available (needs /proc/stat)");
+            return;
+        }
+        System.out.println("  " + textChart.DIM + "measured over 1 second, a core counts as busy at "
+                + Math.round(BUSY * 100) + "% or more" + textChart.RESET);
+        System.out.println();
+
+        int cores = loads[0].length;
+        String header = "  Threads  ";
+        for (int core = 0; core < cores; core++) {
+            header = header + String.format("c%-4d", core);
+        }
+        System.out.println("  " + textChart.BOLD + header.substring(2) + " Busy" + textChart.RESET);
+
+        for (int i = 0; i < threadCounts.length; i++) {
+            String line = String.format("  %7d  ", threadCounts[i]);
+            int busy = 0;
+            for (int core = 0; core < cores; core++) {
+                double load = loads[i][core];
+                if (load < 0) {
+                    line = line + "  -  ";
+                    continue;
+                }
+                if (load >= BUSY) {
+                    busy++;
+                }
+                char level = LEVELS[(int) Math.round(load * (LEVELS.length - 1))];
+                line = line + textChart.colourFor(load * 100) + level + textChart.RESET
+                        + String.format("%3d ", Math.round(load * 100));
+            }
+            System.out.println(line + String.format("%4d", busy));
         }
     }
 
