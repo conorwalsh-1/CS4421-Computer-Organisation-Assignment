@@ -23,28 +23,50 @@ class UsbDevice {
         this.productName = productName;
     }
 
-    //getters
-    int getBusNumber(){
+    // getters
+    int getBusNumber() {
         return busNumber;
     }
 
-    int getDeviceNumber(){
+    int getDeviceNumber() {
         return deviceNumber;
     }
 
-    int getVendorId(){
+    int getVendorId() {
         return vendorId;
     }
 
-    int getProductId(){
+    int getProductId() {
         return productId;
     }
 
-    String getVendorName(){
+    String getVendorName() {
         return vendorName;
     }
 
-    String getProductName(){
+    String getProductName() {
         return productName;
+    }
+
+    /** One line describing the device: busNumber, deviceNumber, names and IDs */
+    public String describe() {
+        String vendor = vendorName == null
+                ? "0x" + hex(vendorId) // if null gives raw hex
+                : vendorName + " (0x" + hex(vendorId) + ")"; // if success gives name and hex
+
+        String product = productName == null
+                ? "0x" + hex(productId)
+                : productName + " (0x" + hex(productId) + ")";
+
+        return "Bus " + busNumber + " Device " + deviceNumber + ": " + vendor + " " + product;
+    }
+
+    /** A number in hexadecimal, padded with zeros to 4 digits. */
+    private static String hex(int n) {
+        String s = Integer.toHexString(n);
+        while (s.length() < 4) {
+            s = "0" + s;
+        }
+        return s;
     }
 }

@@ -22,6 +22,7 @@ public class PciDevice {
     private final String vendorName;
     private final String deviceName;
     private final String className;
+  
     /**
      * Constructor for each PCI device instance
      */
@@ -92,23 +93,23 @@ public class PciDevice {
 
     /** One line describing the device: address, class, names and IDs. */
     public String describe() {
-        return address + " " + orUnknown(className) + ": " + orUnknown(vendorName) + " "
-                + orUnknown(deviceName) + " [" + hex(vendorId) + ":" + hex(deviceId) + "]";
+        String classText = className == null
+                ? "0x" + hex(classCode, 6)
+                : className + " (0x" + hex(classCode, 6) + ")";
+
+        String vendorText = vendorName == null
+                ? "0x" + hex(vendorId, 4)
+                : vendorName + " (0x" + hex(vendorId, 4) + ")";
+
+        String deviceText = deviceName == null
+                ? "0x" + hex(deviceId, 4)
+                : deviceName + " (0x" + hex(deviceId, 4) + ")";
+
+        return address + " " + classText + ": " + vendorText + " " + deviceText;
     }
 
-    private static String orUnknown(String name) {
-        if (name == null) {
-            return "Unknown";
-        }
-        return name;
-    }
-
-    /** A number in hexadecimal, padded with zeros to 4 digits. */
-    private static String hex(int n) {
-        String s = Integer.toHexString(n);
-        while (s.length() < 4) {
-            s = "0" + s;
-        }
-        return s;
+    /** A number in hexadecimal, padded with 0 to n digits. */
+    private static String hex(int number, int digits) {
+        return String.format("%0" + digits + "x", number);
     }
 }
