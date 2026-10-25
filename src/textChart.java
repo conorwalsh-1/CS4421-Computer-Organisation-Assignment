@@ -8,6 +8,8 @@ public class textChart {
     public static final String GREEN = "\u001B[32m";
     public static final String YELLOW = "\u001B[33m";
     public static final String CYAN = "\u001B[36m";
+    public static final String BOLD = "\u001B[1m";
+    public static final String DIM = "\u001B[2m";
 
     private static final int GRAPH_ROWS = 10;
 

@@ -68,6 +68,9 @@ public class demo
                 case 5:
                     summaryMenu();
                     break;
+                case 6:
+                    memExplorer.run();
+                    break;
                 case 0:
                     System.out.println("Goodbye.");
                     return;
@@ -119,7 +122,8 @@ public class demo
         menuLine(inner, "2", "Memory", "usage, breakdown and swap");
         menuLine(inner, "3", "PCI", "devices, vendors and classes");
         menuLine(inner, "4", "USB", "connected devices");
-        menuLine(inner, "5", "Summary", "the whole machine in one line");
+        menuLine(inner, "5", "Summary", "the whole machine on one screen");
+        menuLine(inner, "6", "Explorer", "cache timing tests (about a minute)");
         System.out.println("  " + PURPLE + "├" + textChart.repeat('─', inner) + "┤" + RESET);
         menuLine(inner, "0", "Exit", "");
         System.out.println("  " + PURPLE + "└" + textChart.repeat('─', inner) + "┘" + RESET);

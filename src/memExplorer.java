@@ -17,7 +17,7 @@ import java.util.Random;
  * After both tests it estimates where each cache level ends and how big a cache
  * line is, from where the times jump.
  *
- * Run:  java -cp out memExplorer   (best on alderaan or a Linux VM)
+ * Started from the main menu (option 6). Best run on alderaan or a Linux VM.
  */
 public class memExplorer {
     private static final int KiB = 1024;
@@ -47,9 +47,21 @@ public class memExplorer {
     /** The results are added here so Java can't skip the loops as unused work. */
     private static long sink = 0;
 
-    public static void main(String[] args) {
+    /** Longest bar in the result charts. */
+    private static final int BAR_WIDTH = 36;
+
+    /**
+     * Runs both tests, showing progress while they run, then clears the screen and
+     * shows the results as bar charts with the estimates underneath.
+     */
+    public static void run() {
+        title();
+        System.out.println("  " + textChart.DIM + "This takes about a minute. Close other programs for steadier results."
+                + textChart.RESET);
+        System.out.println();
+
         // the first runs are slower while Java compiles the loops, so do a few runs first and ignore them
-        System.out.println("Warming up...");
+        System.out.println("  Warming up...");
         int[] warmUp = makeArray(MiB);
         for (int i = 0; i < 3; i++) {
             timeWorkingSet(warmUp);
@@ -62,32 +74,114 @@ public class memExplorer {
         int[] strides = new int[NUM_STRIDES];
         double[] strideTimes = new double[NUM_STRIDES];
 
-        System.out.println();
-        System.out.println("Working-set test (ns per access)");
         int bytes = 4 * KiB;
         for (int i = 0; i < NUM_SIZES; i++) {
+            System.out.printf("  Working-set test  %2d of %d   %-10s", i + 1, NUM_SIZES, memReport.formatKiB(bytes / KiB));
             int[] array = makeArray(bytes / 4); // an int is 4 bytes
             sizes[i] = bytes;
             sizeTimes[i] = timeWorkingSet(array);
-            System.out.printf("  %10s  %7.2f ns%n", memReport.formatKiB(bytes / KiB), sizeTimes[i]);
+            System.out.printf("%7.2f ns%n", sizeTimes[i]);
             bytes = bytes * 2;
         }
 
-        System.out.println();
-        System.out.println("Stride test on a 64 MiB array (ns per access)");
+        System.out.println("  Making the 64 MiB array for the stride test...");
         int[] big = makeArray(64 * MiB / 4);
         int stride = 1;
         for (int i = 0; i < NUM_STRIDES; i++) {
+            System.out.printf("  Stride test       %2d of %d   %-10s", i + 1, NUM_STRIDES, stride + " ints");
             strides[i] = stride;
             strideTimes[i] = timeStride(big, stride);
-            System.out.printf("  stride %2d ints (%3d bytes)  %6.3f ns%n", stride, stride * 4, strideTimes[i]);
+            System.out.printf("%7.3f ns%n", strideTimes[i]);
             stride = stride * 2;
         }
 
-        System.out.println();
-        System.out.println("Estimates");
+        textChart.clearScreen();
+        title();
+        printSizeChart(sizes, sizeTimes);
+        printStrideChart(strides, strideTimes);
+
+        subheading("Estimates");
         printCacheLevels(sizes, sizeTimes);
         printLineSize(strides, strideTimes);
+        System.out.println();
+        System.out.println("  Reported by Linux: " + cpuReport.cacheSummary());
+        System.out.println("  " + textChart.DIM + "(cache line size: " + cacheLineSize() + ")" + textChart.RESET);
+    }
+
+    /** The title at the top of the screen. */
+    private static void title() {
+        System.out.println();
+        System.out.println("  " + textChart.BOLD + textChart.GREEN + "Memory explorer" + textChart.RESET);
+        System.out.println();
+    }
+
+    /** A cyan heading inside the screen. */
+    private static void subheading(String text) {
+        System.out.println();
+        System.out.println("  " + textChart.BOLD + textChart.CYAN + text + textChart.RESET);
+    }
+
+    /**
+     * The working-set results, one bar per array size. The bars use a log scale
+     * (each step up the bar is the same number of times slower) because the times
+     * go from about 1 ns in L1 to around 100 ns in RAM, and on a normal scale the
+     * small differences between L1, L2 and L3 would be too small to see.
+     */
+    private static void printSizeChart(int[] sizes, double[] times) {
+        subheading("Working-set test");
+        System.out.println("  " + textChart.DIM + "ns per read, random order, longer bar = slower (log scale)"
+                + textChart.RESET);
+
+        double fastest = times[0];
+        double slowest = times[0];
+        for (double t : times) {
+            if (t < fastest)
+                fastest = t;
+            if (t > slowest)
+                slowest = t;
+        }
+
+        for (int i = 0; i < sizes.length; i++) {
+            // how far this time is from the fastest to the slowest, from 0 to 1, on a log scale
+            double position = 1;
+            if (slowest > fastest)
+                position = Math.log(times[i] / fastest) / Math.log(slowest / fastest);
+            int length = 1 + (int) Math.round(position * (BAR_WIDTH - 1));
+
+            String bar = textChart.CYAN + textChart.repeat('█', length) + textChart.RESET
+                    + textChart.repeat(' ', BAR_WIDTH - length);
+            System.out.printf("  %9s  %s %7.2f ns%n", memReport.formatKiB(sizes[i] / KiB), bar, times[i]);
+        }
+    }
+
+    /** The stride results, one bar per stride, on a normal scale. */
+    private static void printStrideChart(int[] strides, double[] times) {
+        subheading("Stride test on a 64 MiB array");
+        System.out.println("  " + textChart.DIM + "ns per read, every element read once, longer bar = slower"
+                + textChart.RESET);
+
+        double slowest = 0;
+        for (double t : times) {
+            if (t > slowest)
+                slowest = t;
+        }
+
+        for (int i = 0; i < strides.length; i++) {
+            int length = (int) Math.round(times[i] / slowest * BAR_WIDTH);
+            if (length < 1)
+                length = 1;
+            String bar = textChart.YELLOW + textChart.repeat('█', length) + textChart.RESET
+                    + textChart.repeat(' ', BAR_WIDTH - length);
+            System.out.printf("  %2d ints %3d B  %s %7.3f ns%n", strides[i], strides[i] * 4, bar, times[i]);
+        }
+    }
+
+    /** The coherency line size of cpu0's first cache in bytes, as Linux reports it, or "not available". */
+    private static String cacheLineSize() {
+        cpuInfo.CacheInfo cache = cpuInfo.getCacheInfo(0);
+        if (cache == null || cache.getCoherencyLineSize().isEmpty())
+            return "not available";
+        return cache.getCoherencyLineSize() + " bytes";
     }
 
     /**
