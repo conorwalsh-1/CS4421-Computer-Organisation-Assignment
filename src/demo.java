@@ -1,4 +1,14 @@
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.FileStore;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Scanner;
 
 /**
@@ -28,9 +38,29 @@ public class demo
     private static final String[] TITLE_COLOURS = {CYAN, CYAN, BLUE, BLUE, PURPLE, PURPLE};
     private static final int MENU_WIDTH = 66;
 
-    public static void main(String[] args)
+    public static void main(String[] args) throws IOException
     {
         Scanner sc = new Scanner(System.in);
+        Path template = Paths.get(args.length > 0 ? args[0] : "src/template.html"); //creates 2 path objects using the supplied arguments in command line or the default names if no arguments are given
+        Path output   = Paths.get(args.length > 1 ? args[1] : "src/report.html");
+
+    Thread reportUpdater = new Thread(() -> { //makes a new Java thread
+        while (!Thread.currentThread().isInterrupted()) {//loops until the thread is interupted
+            try {
+                writeReport(template, output, collectTemplateData());//writes a new report each sec
+                Thread.sleep(1000);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+    }
+});
+
+reportUpdater.setDaemon(true);
+reportUpdater.start();
+
 
         while (true) {
             clearScreen();
@@ -70,6 +100,12 @@ public class demo
                     break;
                 case 7:
                     parallelTest.run();
+                    break;
+                case 8:
+                     
+                    Map<String, String> templateData = collectTemplateData();
+                    writeReport(template, output, templateData);
+                    
                     break;
                 case 0:
                     System.out.println("Goodbye.");
@@ -125,6 +161,7 @@ public class demo
         menuLine(inner, "5", "Summary", "the whole machine on one screen");
         menuLine(inner, "6", "Explorer", "cache timing tests (about a minute)");
         menuLine(inner, "7", "Parallel", "CPU-heavy task on 1, 2, 4 ... threads");
+        menuLine(inner, "8", "HTML Report", "Live updating hardware report");
         System.out.println("  " + PURPLE + "├" + textChart.repeat('─', inner) + "┤" + RESET);
         menuLine(inner, "0", "Exit", "");
         System.out.println("  " + PURPLE + "└" + textChart.repeat('─', inner) + "┘" + RESET);
@@ -371,6 +408,66 @@ public class demo
         memReport.printBreakdown();
     }
 
+    public static Map<String, String> collectTemplateData() //Collects all the data required for the html display in a map
+    {
+        Map<String, String> data = new LinkedHashMap<>();
+        double[] loads = measureLoads();
+        double averageLoad = averageLoad(loads); //uses the average load method on "loads" which is gotten by the measureloads() function which calls back to cpuinfo.java
+        long memoryUsed = memInfo.getUsed();
+        long memoryTotal = memInfo.getTotal();
+
+        data.put("CPU_LOAD", averageLoad < 0 ? "0" : String.format(Locale.ROOT, "%.1f", averageLoad * 100));
+        data.put("CPU_CORES", Integer.toString(loads.length));
+        data.put("CPU_MODEL", cpuReport.getModel());
+        data.put("MEM_USED", gigabytes(memoryUsed, 1024L * 1024));
+        data.put("MEM_TOTAL", gigabytes(memoryTotal, 1024L * 1024));
+        data.put("MEM_PERCENT", memoryPercent(memoryUsed, memoryTotal));
+        data.put("MEM_AVAILABLE", gigabytes(memInfo.getAvailable(), 1024L * 1024));
+        data.put("OS_NAME", System.getProperty("os.name", "unknown"));
+        data.put("OS_ARCH", System.getProperty("os.arch", "unknown")); //Uses the system class to pull os and arch
+        data.put("PCI_DEVICES", Integer.toString(pciInfo.getCount()));
+        data.put("USB_DEVICES", Integer.toString(usbInfo.getCount()));
+
+        try {
+            FileStore disk = Files.getFileStore(Path.of("/"));
+            long diskTotal = disk.getTotalSpace();
+            long diskUsed = diskTotal - disk.getUsableSpace();
+            data.put("DISK_USED", gigabytes(diskUsed, 1_000_000_000L));
+            data.put("DISK_TOTAL", gigabytes(diskTotal, 1_000_000_000L));
+            data.put("DISK_PERCENT", diskPercent(diskUsed, diskTotal));
+        } catch (IOException e) {
+            data.put("DISK_USED", "unavailable");
+            data.put("DISK_TOTAL", "unavailable");
+            data.put("DISK_PERCENT", "0");
+        }
+
+        data.put("TIMESTAMP", Instant.now().toString());
+        
+        return data;
+    }
+
+    private static String gigabytes(long bytes, long divisor)
+    {
+        return bytes < 0 ? "unavailable" : String.format(Locale.ROOT, "%.2f", (double) bytes / divisor); //Changes bytes to gigabytes
+    }
+
+    private static String memoryPercent(long used, long total)
+    {
+        return percent(used, total);
+    }
+
+    private static String diskPercent(long used, long total)
+    {
+        return percent(used, total);
+    }
+
+    private static String percent(long used, long total)
+    {
+        if (used < 0 || total <= 0)
+            return "0";
+        return String.format(Locale.ROOT, "%.1f", used * 100.0 / total); // calculates the 2 inputs as a percentage as a 1 decimal point float with a decimal seperator
+    }
+
     /** The load on each core (0 to 1) over one second, or -1 for a core that cannot be read. */
     private static double[] measureLoads()
     {
@@ -428,4 +525,15 @@ public class demo
 
         return String.format("%.1f%%", average * 100);
     }
+
+    private static void writeReport(Path template, Path output, Map<String, String> stats) throws IOException { //This function writes the HTML Report
+        String html = Files.readString(template, StandardCharsets.UTF_8);//first reads the html file as a string from the template path
+ 
+        for (Map.Entry<String, String> e : stats.entrySet()) {//Then for each entry in my map 
+            html = html.replace("{{" + e.getKey() + "}}", e.getValue());//It replaces the placeholder in the HTML File with the entry from the map
+        }//This works as each key in the map is the same name as the placeholder value in the HTML Template
+ 
+        Files.writeString(output, html, StandardCharsets.UTF_8);//Then it writes an output HTML File with the updated values
+    }
+
 }

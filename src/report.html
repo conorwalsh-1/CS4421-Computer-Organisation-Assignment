@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <meta http-equiv="refresh" content="1"><!--Updates the info on the page every second-->
+  <title>Hardware Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #12141a; color: #e6e6e6; margin: 0; padding: 2rem; }
+    h1 { margin-top: 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+    .card { background: #1d2029; border-radius: 10px; padding: 1rem 1.25rem; }
+    .label { font-size: 0.8rem; text-transform: uppercase; color: #8b90a0; }
+    .value { font-size: 1.5rem; margin-top: 0.25rem; }
+    .bar { background: #2a2e3b; border-radius: 6px; height: 10px; margin-top: 0.5rem; overflow: hidden; }
+    .fill { background: #4f9dff; height: 100%; }
+    footer { margin-top: 2rem; font-size: 0.8rem; color: #8b90a0; }
+  </style>
+</head>
+<body>
+  <h1>Hardware Report</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="label">CPU Load</div>
+      <div class="value">43.7%</div>
+      <div class="bar"><div class="fill" style="width:43.7%"></div></div>
+    </div>
+    <div class="card">
+      <div class="label">CPU Cores (logical)</div>
+      <div class="value">4</div>
+    </div>
+    <div class="card">
+      <div class="label">CPU Model</div>
+      <div class="value">11th Gen Intel(R) Core(TM) i5-1145G7 @ 2.60GHz</div>
+    </div>
+    <div class="card">
+      <div class="label">Memory Used</div>
+      <div class="value">4.36 / 14.61 GB</div>
+      <div class="bar"><div class="fill" style="width:29.9%"></div></div>
+    </div>
+    <div class="card">
+      <div class="label">Memory Available</div>
+      <div class="value">10.25 GB</div>
+    </div>
+    <div class="card">
+      <div class="label">Operating System</div>
+      <div class="value">Linux</div>
+    </div>
+    <div class="card">
+      <div class="label">Architecture</div>
+      <div class="value">amd64</div>
+    </div>
+    <div class="card">
+      <div class="label">Disk (first drive)</div>
+      <div class="value">18.94 / 26.24 GB</div>
+      <div class="bar"><div class="fill" style="width:72.2%"></div></div>
+    </div>
+    <div class="card">
+      <div class="label">PCI Devices</div>
+      <div class="value">11</div>
+    </div>
+    <div class="card">
+      <div class="label">USB Devices</div>
+      <div class="value">3</div>
+    </div>
+  </div>
+  <footer>Last updated: 2026-10-27T11:38:12.123835410Z</footer>
+</body>
+</html>
