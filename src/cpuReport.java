@@ -123,6 +123,34 @@ public class cpuReport {
         }
     }
 
+    /**
+     * All of cpu0's caches on one line, with d for data and i for instruction,
+     * or "not available" if there is no cache information.
+     */
+    public static String cacheSummary() {
+        String summary = "";
+        int index = 0;
+        cpuInfo.CacheInfo cache = cpuInfo.getCacheInfo(index);
+        while (cache != null) {
+            String type = "";
+            if (cache.getType().equals("Data"))
+                type = "d";
+            if (cache.getType().equals("Instruction"))
+                type = "i";
+
+            if (!summary.isEmpty())
+                summary = summary + " · ";
+            summary = summary + "L" + orUnknown(cache.getLevel()) + type + " " + orUnknown(cache.getSize());
+
+            index++;
+            cache = cpuInfo.getCacheInfo(index);
+        }
+
+        if (summary.isEmpty())
+            return "not available";
+        return summary;
+    }
+
     /** The average of the cores that could be read, as a percentage, or -1 if none could. */
     private static double averagePercent(double[] loads) {
         double total = 0;

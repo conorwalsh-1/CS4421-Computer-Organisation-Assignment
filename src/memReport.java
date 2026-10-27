@@ -88,7 +88,7 @@ public class memReport {
     }
 
     /** One bar split into used, reclaimable cache and free, with a key underneath. */
-    private static void printBreakdown() {
+    public static void printBreakdown() {
         long total = memInfo.getTotal();
         long used = memInfo.getUsed();
         long free = memInfo.field("MemFree");
