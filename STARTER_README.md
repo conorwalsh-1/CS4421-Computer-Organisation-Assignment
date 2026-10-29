@@ -49,6 +49,22 @@ To test with data from another machine, copy `/proc/cpuinfo`, `/proc/stat`,
 `/proc/meminfo` and the `/sys/bus` folders into a folder, and run with
 `java -Dhw.root=/path/to/folder -cp out demo`.
 
+## Running our project
+
+We extended the starter code with a menu. Options 1–5 show CPU, memory,
+PCI, USB and a summary. Option 6 runs the memory tests and saves
+`mem_explorer_results.csv`. Option 7 compares prime counting with different
+numbers of threads. Enter 0 to exit.
+
+To view the HTML report, open `src/report.html` in a browser while the
+program is running. It updates automatically, and option 8 saves it too.
+Make layout changes in `src/template.html`, as the program overwrites
+`report.html`.
+
+The hardware readings come from the files listed above. We also read PCI
+bridge details from each device's `config` file, and USB speed and class
+from `speed` and `bDeviceClass`. Java provides the OS, architecture and
+root filesystem space. Both benchmarks use `System.nanoTime()` for timing.
 ## The ID files
 
 `ids/pci.ids` is the PCI ID database (version 2026.10.12) from
