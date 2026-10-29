@@ -1,7 +1,8 @@
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-
+import java.io.File;
+import java.io.RandomAccessFile;
 /**
  * One PCI device, with its address, ID numbers and the names looked up for them.
  *
@@ -111,5 +112,41 @@ public class PciDevice {
     /** A number in hexadecimal, padded with 0 to n digits. */
     private static String hex(int number, int digits) {
         return String.format("%0" + digits + "x", number);
+    }
+
+    public static void showBridgeInfo() {
+        List<PciDevice> devices = readAll();
+
+        for (PciDevice d : devices) {
+            int type = d.getClassCode();
+
+            //check if it is a bridge
+            if ((type >> 16) == 6) {
+                System.out.println(d.getAddress() + " - Bridge class device");
+
+                //PCI to PCI bridge
+                if ((type >> 8) == 0x0604) {
+                    try {
+                        File file = new File("/sys/bus/pci/devices/" + d.getAddress() + "/config");
+                        RandomAccessFile config = new RandomAccessFile(file, "r");
+
+                        config.seek(25);
+                        int bus1 = config.readUnsignedByte();
+                        int bus2 = config.readUnsignedByte();
+
+                        System.out.println("Buses: " + bus1 + " to " + bus2);
+
+                        config.close();
+                    } catch (IOException e) {
+                        System.out.println("Could not read bridge");
+                    }
+                }
+            }
+
+            //virtual device
+            if (d.getVendorId() == 0x1af4) {
+                System.out.println(d.getAddress() + " - Red Hat virtio");
+            }
+        }
     }
 }

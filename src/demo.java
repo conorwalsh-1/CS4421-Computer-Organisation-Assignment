@@ -50,23 +50,22 @@ public class demo
         Path template = Paths.get(args.length > 0 ? args[0] : "src/template.html"); //gets the html template path from the command line or uses the default
         Path output   = Paths.get(args.length > 1 ? args[1] : "src/report.html"); //gets the report output path from the command line or uses the default
 
-    Thread reportUpdater = new Thread(() -> { //makes a new Java thread for updating the html report
-        while (!Thread.currentThread().isInterrupted()) {//loops until the thread is interupted
-            try {
-                writeReport(template, output, collectTemplateData());//writes a new report each second
-                Thread.sleep(1000);
-            } catch (IOException e) {
-                e.printStackTrace();
-                return;
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
+        Thread reportUpdater = new Thread(() -> { //makes a new Java thread for updating the html report
+            while (!Thread.currentThread().isInterrupted()) {//loops until the thread is interupted
+                try {
+                    writeReport(template, output, collectTemplateData());//writes a new report each second
+                    Thread.sleep(1000);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    return;
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
             }
-    }
-});
+        });
 
-reportUpdater.setDaemon(true);
-reportUpdater.start();
-
+        reportUpdater.setDaemon(true);
+        reportUpdater.start();
 
         while (true) {
             clearScreen();
@@ -108,10 +107,8 @@ reportUpdater.start();
                     parallelTest.run();
                     break;
                 case 8:
-                     
                     Map<String, String> templateData = collectTemplateData();
                     writeReport(template, output, templateData);
-                    
                     break;
                 case 0:
                     System.out.println("Goodbye.");
@@ -276,6 +273,8 @@ reportUpdater.start();
 
         subheading("Devices by class");
         PciAnalysis.printCountByClass(devices);
+
+        PciDevice.showBridgeInfo();
     }
 
     /** Displays every USB device with its bus, device number, IDs and names. */
@@ -296,8 +295,11 @@ reportUpdater.start();
             System.out.println("  " + YELLOW + where + RESET
                     + "  " + BOLD + nameOr(usb.getProductName(), "Unknown product") + RESET
                     + "  " + DIM + "[" + hex4(usb.getVendorId()) + ":" + hex4(usb.getProductId()) + "]" + RESET);
+
             System.out.println("  " + indent + "  " + nameOr(usb.getVendorName(), "Unknown vendor"));
         }
+
+        UsbInspector.showBusInfo();
     }
 
     /**
@@ -339,10 +341,10 @@ reportUpdater.start();
             article = "an";/*"an Intel" but "a Ryzen" */
 
         String sentence = String.format("This computer has %s %s CPU with %d cores, an average load of %s, "
-                          + "%s of memory used out of %s, and %d PCI and %d USB devices.", /*Formatted summary */
-                          article, model, loads.length, averageLoadText(loads),
-                          memReport.formatKiB(memInfo.getUsed()), memReport.formatKiB(memInfo.getTotal()),
-                          pciDevices.size(), usbDevices.size());
+                        + "%s of memory used out of %s, and %d PCI and %d USB devices.", /*Formatted summary */
+                        article, model, loads.length, averageLoadText(loads),
+                        memReport.formatKiB(memInfo.getUsed()), memReport.formatKiB(memInfo.getTotal()),
+                        pciDevices.size(), usbDevices.size());
         printWrapped(sentence, MENU_WIDTH);
     }
 
@@ -414,7 +416,8 @@ reportUpdater.start();
         memReport.printBreakdown();
     }
 
-    public static Map<String, String> collectTemplateData() //Collects all the data required for the html display in a map
+    /** Collects all the data required for the html display in a map. */
+    public static Map<String, String> collectTemplateData()
     {
         Map<String, String> data = new LinkedHashMap<>();
         double[] loads = measureLoads();
@@ -452,7 +455,7 @@ reportUpdater.start();
         }
 
         data.put("TIMESTAMP", Instant.now().toString());
-        
+
         return data;
     }
 
@@ -579,8 +582,10 @@ reportUpdater.start();
         return String.format(Locale.ROOT, "%.1f", used * 100.0 / total); // calculates the 2 inputs as a percentage as a 1 decimal point float with a decimal seperator
     }
 
-    /** The load on each core (0 to 1) over one second, or -1 for a core that cannot be read. */
-    /** Reads CPU ticks twice and calculates the load of every logical core. */
+    /**
+     * Reads CPU ticks twice, one second apart, and calculates the load of every logical core.
+     * Each load is between 0 and 1, or -1 for a core that cannot be read.
+     */
     private static double[] measureLoads()
     {
         int cores = cpuInfo.getCount(); /*gets the no. of cores */
@@ -641,11 +646,11 @@ reportUpdater.start();
     /** Reads the template, replaces each placeholder and writes the finished HTML report. */
     private static void writeReport(Path template, Path output, Map<String, String> stats) throws IOException { //This function writes the HTML Report
         String html = Files.readString(template, StandardCharsets.UTF_8);//first reads the html file as a string from the template path
- 
-        for (Map.Entry<String, String> e : stats.entrySet()) {//Then for each entry in my map 
+
+        for (Map.Entry<String, String> e : stats.entrySet()) {//Then for each entry in my map
             html = html.replace("{{" + e.getKey() + "}}", e.getValue());//It replaces the placeholder in the HTML File with the entry from the map
         }//This works as each key in the map is the same name as the placeholder value in the HTML Template
- 
+
         Files.writeString(output, html, StandardCharsets.UTF_8);//Then it writes an output HTML File with the updated values
     }
 
