@@ -37,6 +37,11 @@ public class demo
     };
     private static final String[] TITLE_COLOURS = {CYAN, CYAN, BLUE, BLUE, PURPLE, PURPLE};
     private static final int MENU_WIDTH = 66;
+    private static final int SVG_HISTORY_SIZE = 30;
+    private static double[][] coreLoadHistory = new double[0][];
+    private static int coreLoadHistoryCount;
+    private static final double[] memoryUsageHistory = new double[SVG_HISTORY_SIZE];
+    private static int memoryUsageHistoryCount;
 
     public static void main(String[] args) throws IOException
     {
@@ -415,13 +420,17 @@ reportUpdater.start();
         double averageLoad = averageLoad(loads); //uses the average load method on "loads" which is gotten by the measureloads() function which calls back to cpuinfo.java
         long memoryUsed = memInfo.getUsed();
         long memoryTotal = memInfo.getTotal();
+        updateCoreLoadHistory(loads);
+        updateMemoryUsageHistory(memoryUsed, memoryTotal);
 
         data.put("CPU_LOAD", averageLoad < 0 ? "0" : String.format(Locale.ROOT, "%.1f", averageLoad * 100));
         data.put("CPU_CORES", Integer.toString(loads.length));
+        data.put("CPU_CORE_GRAPHS", coreLoadGraphs());
         data.put("CPU_MODEL", cpuReport.getModel());
         data.put("MEM_USED", gigabytes(memoryUsed, 1024L * 1024));
         data.put("MEM_TOTAL", gigabytes(memoryTotal, 1024L * 1024));
         data.put("MEM_PERCENT", memoryPercent(memoryUsed, memoryTotal));
+        data.put("MEMORY_GRAPH", memoryUsageGraph());
         data.put("MEM_AVAILABLE", gigabytes(memInfo.getAvailable(), 1024L * 1024));
         data.put("OS_NAME", System.getProperty("os.name", "unknown"));
         data.put("OS_ARCH", System.getProperty("os.arch", "unknown")); //Uses the system class to pull os and arch
@@ -444,6 +453,99 @@ reportUpdater.start();
         data.put("TIMESTAMP", Instant.now().toString());
         
         return data;
+    }
+
+    private static synchronized void updateMemoryUsageHistory(long used, long total)
+    {
+        double usage = used < 0 || total <= 0 ? -1 : used * 1.0 / total;
+        if (memoryUsageHistoryCount == SVG_HISTORY_SIZE)
+            System.arraycopy(memoryUsageHistory, 1, memoryUsageHistory, 0, SVG_HISTORY_SIZE - 1);
+        memoryUsageHistory[Math.min(memoryUsageHistoryCount, SVG_HISTORY_SIZE - 1)] = usage;
+        if (memoryUsageHistoryCount < SVG_HISTORY_SIZE)
+            memoryUsageHistoryCount++;
+    }
+
+    private static synchronized String memoryUsageGraph()
+    {
+        StringBuilder graph = new StringBuilder();
+        graph.append("<div class=\"graph-card\"><div class=\"label\">Memory usage</div>");
+        double current = memoryUsageHistoryCount == 0 ? -1 : memoryUsageHistory[memoryUsageHistoryCount - 1];
+        graph.append("<div class=\"graph-value\">");
+        if (current < 0)
+            graph.append("not available");
+        else
+            graph.append(String.format(Locale.ROOT, "%.1f%%", current * 100));
+        graph.append("</div><svg viewBox=\"0 0 640 130\" role=\"img\" aria-label=\"Memory usage history\">")
+                .append("<line class=\"axis\" x1=\"8\" y1=\"112\" x2=\"632\" y2=\"112\"/>")
+                .append("<line class=\"guide\" x1=\"8\" y1=\"60\" x2=\"632\" y2=\"60\"/>")
+                .append("<line class=\"guide\" x1=\"8\" y1=\"8\" x2=\"632\" y2=\"8\"/>");
+        if (current >= 0) {
+            graph.append("<polyline class=\"memory-line\" points=\"");
+            int samples = Math.min(memoryUsageHistoryCount, SVG_HISTORY_SIZE);
+            for (int sample = 0; sample < samples; sample++) {
+                double usage = Math.max(0, Math.min(1, memoryUsageHistory[sample]));
+                double x = 8 + sample * 624.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
+                double y = 112 - usage * 104;
+                graph.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, y));
+            }
+            double currentX = 8 + (samples - 1) * 624.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
+            double currentY = 112 - Math.max(0, Math.min(1, current)) * 104;
+            graph.append("\"/><circle class=\"memory-point\" cx=\"")
+                    .append(String.format(Locale.ROOT, "%.1f", currentX)).append("\" cy=\"")
+                    .append(String.format(Locale.ROOT, "%.1f", currentY)).append("\" r=\"4\"/>");
+        }
+        return graph.append("</svg><div class=\"graph-scale\"><span>0%</span><span>100%</span></div></div>").toString();
+    }
+
+    private static synchronized void updateCoreLoadHistory(double[] loads)//SVG Core
+    {
+        if (coreLoadHistory.length != loads.length) {
+            coreLoadHistory = new double[loads.length][SVG_HISTORY_SIZE];
+            coreLoadHistoryCount = 0;
+        }
+
+        for (int core = 0; core < loads.length; core++) {
+            if (coreLoadHistoryCount == SVG_HISTORY_SIZE)
+                System.arraycopy(coreLoadHistory[core], 1, coreLoadHistory[core], 0, SVG_HISTORY_SIZE - 1);
+            coreLoadHistory[core][Math.min(coreLoadHistoryCount, SVG_HISTORY_SIZE - 1)] = loads[core];
+        }
+        if (coreLoadHistoryCount < SVG_HISTORY_SIZE)
+            coreLoadHistoryCount++;
+    }
+
+    private static synchronized String coreLoadGraphs()
+    {
+        StringBuilder graphs = new StringBuilder();
+        for (int core = 0; core < coreLoadHistory.length; core++) {
+            double current = coreLoadHistoryCount == 0 ? -1 : coreLoadHistory[core][coreLoadHistoryCount - 1];
+            graphs.append("<div class=\"graph-card\"><div class=\"label\">Core ")
+                    .append(core).append("</div><div class=\"graph-value\">");
+            if (current < 0)
+                graphs.append("not available");
+            else
+                graphs.append(String.format(Locale.ROOT, "%.1f%%", current * 100));
+            graphs.append("</div><svg viewBox=\"0 0 320 130\" role=\"img\" aria-label=\"CPU core ")
+                    .append(core).append(" load history\"><line class=\"axis\" x1=\"8\" y1=\"112\" x2=\"312\" y2=\"112\"/>"
+                    + "<line class=\"guide\" x1=\"8\" y1=\"60\" x2=\"312\" y2=\"60\"/>"
+                    + "<line class=\"guide\" x1=\"8\" y1=\"8\" x2=\"312\" y2=\"8\"/>");
+            if (current >= 0) {
+                graphs.append("<polyline class=\"load-line\" points=\"");
+                int samples = Math.min(coreLoadHistoryCount, SVG_HISTORY_SIZE);
+                for (int sample = 0; sample < samples; sample++) {
+                    double load = Math.max(0, Math.min(1, coreLoadHistory[core][sample]));
+                    double x = 8 + sample * 304.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
+                    double y = 112 - load * 104;
+                    graphs.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, y));
+                }
+                double currentX = 8 + (samples - 1) * 304.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
+                double currentY = 112 - Math.max(0, Math.min(1, current)) * 104;
+                graphs.append("\"/><circle class=\"load-point\" cx=\"")
+                        .append(String.format(Locale.ROOT, "%.1f", currentX)).append("\" cy=\"")
+                        .append(String.format(Locale.ROOT, "%.1f", currentY)).append("\" r=\"4\"/>");
+            }
+            graphs.append("</svg><div class=\"graph-scale\"><span>0%</span><span>100%</span></div></div>");
+        }
+        return graphs.toString();
     }
 
     private static String gigabytes(long bytes, long divisor)

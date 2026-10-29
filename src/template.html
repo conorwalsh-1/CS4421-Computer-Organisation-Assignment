@@ -15,6 +15,17 @@
     .value { font-size: 1.5rem; margin-top: 0.25rem; }
     .bar { background: #2a2e3b; border-radius: 6px; height: 10px; margin-top: 0.5rem; overflow: hidden; }
     .fill { background: #4f9dff; height: 100%; }
+    .graphs { margin-top: 1rem; }
+    .graph-card { background: #1d2029; border-radius: 10px; padding: 1rem 1.25rem; }
+    .graph-card svg { display: block; width: 100%; height: auto; margin-top: .75rem; }
+    .graph-value { font-size: 1.35rem; margin-top: .25rem; }
+    .axis { stroke: #596173; stroke-width: 1; }
+    .guide { stroke: #2f3442; stroke-width: 1; stroke-dasharray: 4 5; }
+    .load-line { fill: none; stroke: #58d6a0; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; }
+    .load-point { fill: #f5c451; stroke: #12141a; stroke-width: 2; }
+    .memory-line { fill: none; stroke: #4f9dff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; }
+    .memory-point { fill: #f5c451; stroke: #12141a; stroke-width: 2; }
+    .graph-scale { display: flex; justify-content: space-between; color: #8b90a0; font-size: .75rem; }
     footer { margin-top: 2rem; font-size: 0.8rem; color: #8b90a0; }
   </style>
 </head>
@@ -65,6 +76,14 @@
       <div class="value">{{USB_DEVICES}}</div>
     </div>
   </div>
+  <section class="graphs">
+    <h2>CPU load by core</h2>
+    <div class="grid">{{CPU_CORE_GRAPHS}}</div>
+  </section>
+  <section class="graphs">
+    <h2>Memory usage history</h2>
+    {{MEMORY_GRAPH}}
+  </section>
   <footer>Last updated: {{TIMESTAMP}}</footer>
 </body>
 </html>
