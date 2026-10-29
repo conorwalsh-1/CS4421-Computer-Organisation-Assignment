@@ -17,7 +17,7 @@ import java.util.Scanner;
  */
 public class demo
 {
-    private static final String RESET = "\u001B[0m";
+    private static final String RESET = "\u001B[0m";//inits colours for the menu
     private static final String RED = "\u001B[31m";
     private static final String GREEN = "\u001B[32m";
     private static final String CYAN = "\u001B[36m";
@@ -37,19 +37,20 @@ public class demo
     };
     private static final String[] TITLE_COLOURS = {CYAN, CYAN, BLUE, BLUE, PURPLE, PURPLE};
     private static final int MENU_WIDTH = 66;
-    private static final int SVG_HISTORY_SIZE = 30;
-    private static double[][] coreLoadHistory = new double[0][];
-    private static int coreLoadHistoryCount;
-    private static final double[] memoryUsageHistory = new double[SVG_HISTORY_SIZE];
-    private static int memoryUsageHistoryCount;
+    private static final int SVG_HISTORY_SIZE = 30;//collects 30 data points for the graph
+    private static double[][] coreLoadHistory = new double[0][];//Stored in a double array
+    private static int coreLoadHistoryCount;//keeps track of how many core readings have been stored
+    private static final double[] memoryUsageHistory = new double[SVG_HISTORY_SIZE];//stores the memory readings for the graph
+    private static int memoryUsageHistoryCount;//keeps track of how many memory readings have been stored
 
+    /** Starts the report updater and displays the interactive menu. */
     public static void main(String[] args) throws IOException
     {
         Scanner sc = new Scanner(System.in);
-        Path template = Paths.get(args.length > 0 ? args[0] : "src/template.html"); //creates 2 path objects using the supplied arguments in command line or the default names if no arguments are given
-        Path output   = Paths.get(args.length > 1 ? args[1] : "src/report.html");
+        Path template = Paths.get(args.length > 0 ? args[0] : "src/template.html"); //gets the html template path from the command line or uses the default
+        Path output   = Paths.get(args.length > 1 ? args[1] : "src/report.html"); //gets the report output path from the command line or uses the default
 
-    Thread reportUpdater = new Thread(() -> { //makes a new Java thread
+    Thread reportUpdater = new Thread(() -> { //makes a new Java thread for updating the html report
         while (!Thread.currentThread().isInterrupted()) {//loops until the thread is interupted
             try {
                 writeReport(template, output, collectTemplateData());//writes a new report each sec
@@ -420,7 +421,7 @@ reportUpdater.start();
         double averageLoad = averageLoad(loads); //uses the average load method on "loads" which is gotten by the measureloads() function which calls back to cpuinfo.java
         long memoryUsed = memInfo.getUsed();
         long memoryTotal = memInfo.getTotal();
-        updateCoreLoadHistory(loads);
+        updateCoreLoadHistory(loads);//stores the latest load for every core
         updateMemoryUsageHistory(memoryUsed, memoryTotal);
 
         data.put("CPU_LOAD", averageLoad < 0 ? "0" : String.format(Locale.ROOT, "%.1f", averageLoad * 100));
@@ -455,20 +456,22 @@ reportUpdater.start();
         return data;
     }
 
+    /** Stores the latest memory percentage and removes the oldest reading when the graph is full. */
     private static synchronized void updateMemoryUsageHistory(long used, long total)
     {
-        double usage = used < 0 || total <= 0 ? -1 : used * 1.0 / total;
+        double usage = used < 0 || total <= 0 ? -1 : used * 1.0 / total;//works out the memory used as a decimal percentage
         if (memoryUsageHistoryCount == SVG_HISTORY_SIZE)
-            System.arraycopy(memoryUsageHistory, 1, memoryUsageHistory, 0, SVG_HISTORY_SIZE - 1);
-        memoryUsageHistory[Math.min(memoryUsageHistoryCount, SVG_HISTORY_SIZE - 1)] = usage;
+            System.arraycopy(memoryUsageHistory, 1, memoryUsageHistory, 0, SVG_HISTORY_SIZE - 1);//moves the readings left when the array is full
+        memoryUsageHistory[Math.min(memoryUsageHistoryCount, SVG_HISTORY_SIZE - 1)] = usage;//adds the newest memory reading
         if (memoryUsageHistoryCount < SVG_HISTORY_SIZE)
             memoryUsageHistoryCount++;
     }
 
+    /** Creates the inline SVG graph used to show memory usage over time. */
     private static synchronized String memoryUsageGraph()
     {
         StringBuilder graph = new StringBuilder();
-        graph.append("<div class=\"graph-card\"><div class=\"label\">Memory usage</div>");
+        graph.append("<div class=\"graph-card\"><div class=\"label\">Memory usage</div>");//starts the memory graph card
         double current = memoryUsageHistoryCount == 0 ? -1 : memoryUsageHistory[memoryUsageHistoryCount - 1];
         graph.append("<div class=\"graph-value\">");
         if (current < 0)
@@ -483,10 +486,10 @@ reportUpdater.start();
             graph.append("<polyline class=\"memory-line\" points=\"");
             int samples = Math.min(memoryUsageHistoryCount, SVG_HISTORY_SIZE);
             for (int sample = 0; sample < samples; sample++) {
-                double usage = Math.max(0, Math.min(1, memoryUsageHistory[sample]));
-                double x = 8 + sample * 624.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
-                double y = 112 - usage * 104;
-                graph.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, y));
+                double usage = Math.max(0, Math.min(1, memoryUsageHistory[sample]));//keeps the graph value between 0 and 100 percent
+                double x = 8 + sample * 624.0 / Math.max(1, SVG_HISTORY_SIZE - 1);//works out the x position of the point
+                double y = 112 - usage * 104;//works out the y position, with higher usage nearer the top
+                graph.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, y));//adds the point to the SVG line
             }
             double currentX = 8 + (samples - 1) * 624.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
             double currentY = 112 - Math.max(0, Math.min(1, current)) * 104;
@@ -494,25 +497,27 @@ reportUpdater.start();
                     .append(String.format(Locale.ROOT, "%.1f", currentX)).append("\" cy=\"")
                     .append(String.format(Locale.ROOT, "%.1f", currentY)).append("\" r=\"4\"/>");
         }
-        return graph.append("</svg><div class=\"graph-scale\"><span>0%</span><span>100%</span></div></div>").toString();
+        return graph.append("</svg><div class=\"graph-scale\"><span>0%</span><span>100%</span></div></div>").toString();//closes the graph and returns it as html
     }
 
+    /** Stores the newest load for each CPU core and keeps only the last 30 readings. */
     private static synchronized void updateCoreLoadHistory(double[] loads)//SVG Core
     {
         if (coreLoadHistory.length != loads.length) {
-            coreLoadHistory = new double[loads.length][SVG_HISTORY_SIZE];
-            coreLoadHistoryCount = 0;
+            coreLoadHistory = new double[loads.length][SVG_HISTORY_SIZE];//creates one history array for each core
+            coreLoadHistoryCount = 0;//resets the count if the number of cores changes
         }
 
         for (int core = 0; core < loads.length; core++) {
             if (coreLoadHistoryCount == SVG_HISTORY_SIZE)
-                System.arraycopy(coreLoadHistory[core], 1, coreLoadHistory[core], 0, SVG_HISTORY_SIZE - 1);
-            coreLoadHistory[core][Math.min(coreLoadHistoryCount, SVG_HISTORY_SIZE - 1)] = loads[core];
+                System.arraycopy(coreLoadHistory[core], 1, coreLoadHistory[core], 0, SVG_HISTORY_SIZE - 1);//removes the oldest core reading
+            coreLoadHistory[core][Math.min(coreLoadHistoryCount, SVG_HISTORY_SIZE - 1)] = loads[core];//adds the newest core reading
         }
         if (coreLoadHistoryCount < SVG_HISTORY_SIZE)
             coreLoadHistoryCount++;
     }
 
+    /** Creates one inline SVG graph for every CPU core. */
     private static synchronized String coreLoadGraphs()
     {
         StringBuilder graphs = new StringBuilder();
@@ -530,12 +535,12 @@ reportUpdater.start();
                     + "<line class=\"guide\" x1=\"8\" y1=\"8\" x2=\"312\" y2=\"8\"/>");
             if (current >= 0) {
                 graphs.append("<polyline class=\"load-line\" points=\"");
-                int samples = Math.min(coreLoadHistoryCount, SVG_HISTORY_SIZE);
+                int samples = Math.min(coreLoadHistoryCount, SVG_HISTORY_SIZE);//gets the number of readings currently available
                 for (int sample = 0; sample < samples; sample++) {
-                    double load = Math.max(0, Math.min(1, coreLoadHistory[core][sample]));
-                    double x = 8 + sample * 304.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
-                    double y = 112 - load * 104;
-                    graphs.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, y));
+                    double load = Math.max(0, Math.min(1, coreLoadHistory[core][sample]));//keeps the core load within the graph range
+                    double x = 8 + sample * 304.0 / Math.max(1, SVG_HISTORY_SIZE - 1);//works out the x position of the point
+                    double y = 112 - load * 104;//works out the y position from the core load
+                    graphs.append(String.format(Locale.ROOT, "%.1f,%.1f ", x, y));//adds the point to the SVG line
                 }
                 double currentX = 8 + (samples - 1) * 304.0 / Math.max(1, SVG_HISTORY_SIZE - 1);
                 double currentY = 112 - Math.max(0, Math.min(1, current)) * 104;
@@ -548,21 +553,25 @@ reportUpdater.start();
         return graphs.toString();
     }
 
+    /** Converts a byte value into gigabytes, or returns unavailable for an invalid value. */
     private static String gigabytes(long bytes, long divisor)
     {
         return bytes < 0 ? "unavailable" : String.format(Locale.ROOT, "%.2f", (double) bytes / divisor); //Changes bytes to gigabytes
     }
 
+    /** Calculates the percentage of memory currently being used. */
     private static String memoryPercent(long used, long total)
     {
         return percent(used, total);
     }
 
+    /** Calculates the percentage of disk space currently being used. */
     private static String diskPercent(long used, long total)
     {
         return percent(used, total);
     }
 
+    /** Converts used and total values into a percentage string. */
     private static String percent(long used, long total)
     {
         if (used < 0 || total <= 0)
@@ -571,6 +580,7 @@ reportUpdater.start();
     }
 
     /** The load on each core (0 to 1) over one second, or -1 for a core that cannot be read. */
+    /** Reads CPU ticks twice and calculates the load of every logical core. */
     private static double[] measureLoads()
     {
         int cores = cpuInfo.getCount(); /*gets the no. of cores */
@@ -597,7 +607,7 @@ reportUpdater.start();
         return loads;
     }
 
-    //work out the average of the valid cpu readings
+    //works out the average of the valid cpu readings
     //returns -1 if there aren't any valid readings
     private static double averageLoad(double[] loads)
     {
@@ -628,6 +638,7 @@ reportUpdater.start();
         return String.format("%.1f%%", average * 100);
     }
 
+    /** Reads the template, replaces each placeholder and writes the finished HTML report. */
     private static void writeReport(Path template, Path output, Map<String, String> stats) throws IOException { //This function writes the HTML Report
         String html = Files.readString(template, StandardCharsets.UTF_8);//first reads the html file as a string from the template path
  
