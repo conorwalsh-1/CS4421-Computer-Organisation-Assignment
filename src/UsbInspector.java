@@ -1,6 +1,8 @@
 import java.util.ArrayList;
 import java.util.List;
 import java.io.IOException;
+import java.io.File;
+import java.nio.file.Files;
 
 class UsbInspector {
     //gets the current USB devices and stores their details in a list
@@ -45,5 +47,42 @@ class UsbInspector {
         }
 
         return devices;
+    }
+
+    //show the speed and class of each USB device
+    static void showBusInfo() {
+        File[] devices = new File("/sys/bus/usb/devices").listFiles();
+
+        if (devices == null) return;
+
+        for (File device : devices) {
+            try {
+                File speedFile = new File(device, "speed");
+                if (!speedFile.exists()) continue;
+
+                String speed = Files.readString(speedFile.toPath()).trim();
+                String deviceClass = Files.readString(new File(device, "bDeviceClass").toPath()).trim();
+
+                double mbps = Double.parseDouble(speed);
+                String version = "Unknown";
+
+                if (mbps == 1.5 || mbps == 12) version = "USB 1.x";
+                else if (mbps == 480) version = "USB 2.0";
+                else if (mbps >= 5000) version = "USB 3.x or newer";
+
+                System.out.println(device.getName() + ": " + speed + " Mbps (" + version + ")");
+                System.out.println("  Class: 0x" + deviceClass);
+                if (deviceClass.equalsIgnoreCase("00")) {
+                   System.out.println("  Class set by interface");
+                }
+
+                if (device.getName().startsWith("usb")) {
+                    System.out.println("  Root hub");
+                }
+
+            } catch (IOException | NumberFormatException e) {
+                System.out.println("Could not read " + device.getName());
+            }
+        }
     }
 }
