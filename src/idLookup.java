@@ -25,6 +25,7 @@ public class idLookup {
     private final Map<Integer, String> vendors = new HashMap<>(); // maps vendor IDs to vendor names
     private final Map<Long, String> devices = new HashMap<>(); // maps combined vendor and device IDs to device names.
                                                                // Combined as different vendors can share a device ID
+    private final Map<Integer, String> baseClasses = new HashMap<>();
     private final Map<Integer, String> classes = new HashMap<>(); // pci.ids only
 
     /**
@@ -47,7 +48,7 @@ public class idLookup {
                 inClasses = true;
                 baseClass = Integer.parseInt(line.substring(2, 4), 16); // takes the hex number after C and converts it
                                                                         // to decimal and stores it in baseClass
-                classes.put(baseClass << 8, line.substring(6).strip()); // shifts baseClass 8 bits left to free the
+                baseClasses.put(baseClass, line.substring(6).strip()); //stores the base class separately
                                                                         // lower bits for the subclass so they can be
                                                                         // stored in same map and takes class name to
                                                                         // store in classes map
@@ -111,7 +112,7 @@ public class idLookup {
      */
     public String className(int classCode) {
         String sub = classes.get(classCode >> 8);
-        return sub != null ? sub : classes.get(classCode >> 16 << 8);
+        return sub != null ? sub : baseClasses.get(classCode >> 16);
     }
 
     /** How many vendors were read. */

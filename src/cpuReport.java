@@ -8,8 +8,8 @@
  */
 public class cpuReport {
     private static final int BAR_WIDTH = 40;
-    private static final int SAMPLES = 20;
-    private static final int SAMPLE_GAP_MS = 500;
+    private static final int SAMPLES = 10;
+    private static final int SAMPLE_GAP_MS = 1000;
 
     /** The CPU model name, or the ARM implementer and part if there is no model name. */
     public static String getModel() {

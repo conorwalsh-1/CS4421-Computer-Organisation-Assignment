@@ -107,8 +107,13 @@ public class demo
                     parallelTest.run();
                     break;
                 case 8:
-                    Map<String, String> templateData = collectTemplateData();
-                    writeReport(template, output, templateData);
+                    try {
+                        Map<String, String> templateData = collectTemplateData();
+                        writeReport(template, output, templateData);
+                        System.out.println("Report saved to " + output.toAbsolutePath());
+                    } catch (IOException e) {
+                        System.out.println("Could not save report: " + e.getMessage());
+                    }
                     break;
                 case 0:
                     System.out.println("Goodbye.");
@@ -266,6 +271,11 @@ public class demo
                     + "  " + DIM + "[" + hex4(d.getVendorId()) + ":" + hex4(d.getDeviceId()) + "]" + RESET);
             System.out.println("  " + indent + "  " + nameOr(d.getVendorName(), "Unknown vendor")
                     + DIM + " · " + RESET + nameOr(d.getDeviceName(), "Unknown device"));
+        }
+
+        subheading("PCI devices by vendor name (A to Z)");
+        for (PciDevice d : PciAnalysis.sortByVendor(devices)) {
+            System.out.println("  " + d.describe());
         }
 
         subheading("Devices by vendor");
