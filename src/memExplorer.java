@@ -352,8 +352,7 @@ public class memExplorer {
 
     /** Writes size/stride vs time results to a CSV file */
     private static void writeCsv(int[] sizes, double[] sizeTimes, int[] strides, double[] strideTimes) {
-        Path output = Path.of("mem_explorer_results.csv"); // sets path where csv will be written to where the file
-                                                           // currently exists
+        Path output = Path.of("mem_explorer_results.csv"); // sets csv path so it overwrites
         try (BufferedWriter csv = Files.newBufferedWriter(output, StandardCharsets.UTF_8)) { // creates a writer to
                                                                                              // write to the file
             csv.write("test,array_size_bytes,stride_elements,stride_bytes,time_ns_per_read"); // creates headers
@@ -365,7 +364,7 @@ public class memExplorer {
             }
 
             for (int i = 0; i < strides.length; i++) { // loops through strides and fills columns with the stride in
-                                                       // elements and in bytes and the time
+                                                       // elements and bytes and the time
                 int strideBytes = strides[i] * Integer.BYTES;
                 csv.write("stride," + (64 * MiB) + "," + strides[i] + "," + strideBytes + ","
                         + String.format(Locale.ROOT, "%.7f", strideTimes[i]));
