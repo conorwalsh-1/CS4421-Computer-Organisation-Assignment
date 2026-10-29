@@ -53,7 +53,7 @@ public class demo
     Thread reportUpdater = new Thread(() -> { //makes a new Java thread for updating the html report
         while (!Thread.currentThread().isInterrupted()) {//loops until the thread is interupted
             try {
-                writeReport(template, output, collectTemplateData());//writes a new report each sec
+                writeReport(template, output, collectTemplateData());//writes a new report each second
                 Thread.sleep(1000);
             } catch (IOException e) {
                 e.printStackTrace();
